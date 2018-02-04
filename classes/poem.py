@@ -37,10 +37,10 @@ class Poem:
         # Note: Will probably need some concept of stanzas at some point
         # Loop through lines of the text checking to see if any of them have a pronunciation provided
         for index, line in enumerate(text):
-            found_pronunciations = re.findall("[\w\']+{[A-Z0-9\s]+}", line)
+            found_pronunciations = re.findall("[\w\']+{[A-Z0-9\s-]+}", line)
             for pronunciation in found_pronunciations:
                 split = pronunciation.split("{")
-                pronunciation = [split[1].replace('}', '').split(' ')]
+                pronunciation = [split[1].replace('}', '')]
                 self.provided_pronunciations[split[0]] = pronunciation
             if found_pronunciations:
                 text[index] = re.sub("{[A-Z0-9\s]+}", "", text[index])
@@ -147,7 +147,7 @@ class Poem:
             # Create a list of lines that are not blank
             non_blank_lines = [item for item in self.joined_scansion if len(item) > 0]
 
-            # Note: May want to create a means of handling variance in syllables per line. Could be part of stanzas
+            # TODO: Need to handle variance in syllables per line. Break lines into groups by length, probably.
             # Create a predicted scan after checking if all lines are the same length
             if len(max(non_blank_lines, key=len)) == len(min(non_blank_lines, key=len)):
                 # Add the appropriate number of elements to track stress appearance by syllable

@@ -2,8 +2,21 @@ import logging
 import nltk
 import re
 import enchant
+import json
 
 cmudict = nltk.corpus.cmudict.dict()
+
+# Only loading our syllabilized dictionary once for performance
+with open('text/cmudict_syllables.json') as file:
+    syllables_dict = json.load(file)
+
+
+def syllable_dict(word):
+    if word in syllables_dict:
+        return syllables_dict[word]
+    else:
+        logging.warning('Could not retrieve syllabified form of %s', word)
+        return []
 
 
 def tokenize(line):
@@ -31,8 +44,12 @@ def tokenize(line):
 # Note: Currently reads "o'er" as "over" which is correct but messes with scansion. Some kind of elision check?
 # Gets a word's pronunciation from CMUdict
 def get_phonetic(word):
+    phonetic = []
+    syllabified = []
+
     try:
-        return cmudict[word]
+        phonetic = cmudict[word]
+        syllabified = syllable_dict(word)
     except KeyError:
         # If we don't get a working word from cmudict, have Enchant (spellchecker) try to find a recognized word
         # Using a dictionary which is a list of words in cmudict so it only suggests pronouncable words
@@ -47,7 +64,8 @@ def get_phonetic(word):
             # If Enchant only returns one suggestion, we use that
             if len(potentials) == 1:
                 logging.warning('Reading \"%s\" as \"%s\"', word, potentials[0])
-                return cmudict[potentials[0]]
+                phonetic = cmudict[potentials[0]]
+                syllabified = syllable_dict(potentials[0])
             # If we get multiple suggestions, use Levenshtein distance to select the closest.
             elif len(potentials) > 1:
                 distances = {}
@@ -55,21 +73,52 @@ def get_phonetic(word):
                     distances[suggestion] = distance(suggestion, word)
                 best_match = min(distances, key=distances.get)
                 logging.warning('Reading \"%s\" as \"%s\"', word, best_match)
-                return cmudict[best_match]
+                phonetic = cmudict[best_match]
+                syllabified = syllable_dict(best_match)
             # If PyEnchant returns an empty list of suggestions
             else:
                 logging.error('Found no valid suggestions for %s', word)
-                return False
         except KeyError:
             logging.error('KeyError attempting to resolve %s', word)
-            return False
+
+    return phonetic, syllabified
 
 
-# Note: Only checks for perfect rhymes currently. Also includes secondary stress in comparison.
-# Attempts to extract the rhyme(s) from a list of lists of phonemes
-def get_rhymes(pronunciations):
-    rhymes = []
-    # Iterates through the pronunciations provided to extract the rhymes
+# Attempts to extract rhymelike features from a list of pronunciations and a list of syllabified pronunciations
+def get_rhymes(pronunciations, syl_pronunciations):
+    p_rhymes = []
+    word_init_consonants = []
+    stressed_vowels = []
+    stress_initial_consonants = []
+    stress_final_consonants = []
+
+    # Obtains word-initial consonant sounds,
+    # Note: Currently words without stress are ignored for stress-relative features.
+    for pronunciation in syl_pronunciations:
+        stressed_syllable = ''
+
+        match = re.search('[\w\s]+(?=[a-zA-Z]{2}[0-2])', pronunciation)
+        if match:
+            word_init_consonants.append(match.group(0).strip())
+
+        match = re.search('[\w\s]*1[\w\s]*', pronunciation)
+        if match:
+            stressed_syllable = match.group(0).strip()
+
+        match = re.search('[a-zA-Z]{2}(?=1)', stressed_syllable)
+        if match:
+            stressed_vowels.append(match.group(0).strip())
+
+        match = re.search("[\w\s]+(?=[a-zA-Z]{2}1)", stressed_syllable)
+        if match:
+            stress_initial_consonants.append(match.group(0).strip())
+
+        match = re.search("(?<=[a-zA-Z]{2}1)[\w\s]+", stressed_syllable)
+        if match:
+            stress_final_consonants.append(match.group(0).strip())
+
+    # Iterates through the pronunciations provided to extract perfect rhymes
+    # Note: Currently includes secondary stress in perfect rhyme.
     for index, pronunciation in enumerate(pronunciations):
         joined = ' '.join(pronunciations[index])
         first_stress = re.search("[a-zA-Z]{1,2}1[\w|\s]*", joined)
@@ -78,10 +127,16 @@ def get_rhymes(pronunciations):
             first_stress = re.search("[a-zA-Z]{1,2}0[\w|\s]*", joined)
         # If we found a rhyme, add it to our list of rhymes
         if first_stress:
-            rhymes.append(first_stress.group(0))
-    # If we have found more than one rhyme we check to make sure that they are actually unique
-    rhymes = list(set(rhymes))
-    return rhymes
+            p_rhymes.append(first_stress.group(0))
+
+    # Set and back to remove duplicates
+    p_rhymes = list(set(p_rhymes))
+    word_init_consonants = list(set(word_init_consonants))
+    stressed_vowels = list(set(stressed_vowels))
+    stress_initial_consonants = list(set(stress_initial_consonants))
+    stress_final_consonants = list(set(stress_final_consonants))
+
+    return p_rhymes, word_init_consonants, stressed_vowels, stress_initial_consonants, stress_final_consonants
 
 
 # Converts parts of speech tags from tagger to those used by wordnet. Returns None if not relevant

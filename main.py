@@ -1,11 +1,3 @@
-# REQUIREMENTS:
-# coloredlogs==8.0
-# nltk==3.2.5
-#   nltk corpora: cmudict, wordnet, words
-#   nltk models: averaged_perceptron_tagger
-# pyenchant==2.0.0
-# python-Levenshtein==0.12.0
-
 import coloredlogs
 import sys
 from utilities import create_poem, process_poems
@@ -13,13 +5,13 @@ from utilities import create_poem, process_poems
 coloredlogs.install(level='INFO', fmt='%(asctime)s: %(message)s', datefmt='%H:%M:%S', stream=sys.stdout)
 
 # Process all poems in the /poems folder. Optional argument to specify a directory, defaults to /poems otherwise.
-process_poems()
+#process_poems()
 
 
 # Single Poem operations.
 # Optional second and third arguments for create_poem() are title, author, and directory
-# poem = create_poem('song on may morning-john milton.txt')
-# poem.get_rhyming_scheme()
+poem = create_poem('when my light is spent-john milton.txt')
+poem.get_rhyming_scheme()
 # poem.get_scansion()
 # # poem.get_direct_scansion()
 # poem.get_meter()

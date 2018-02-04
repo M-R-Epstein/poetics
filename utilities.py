@@ -87,6 +87,31 @@ def write_cmu_wordlist_frequencies():
         file.writelines(output)
 
 
+# Rewrites the syllable list from http://webdocs.cs.ualberta.ca/~kondrak/cmudict.html as json
+def write_syllable_list():
+    import re
+    import json
+    from collections import defaultdict
+
+    dictionary = defaultdict(list)
+
+    with open('text/syll_cmudict.json') as data:
+        read_data = data.readlines()
+
+    for line in read_data:
+        # Get rid of counts from original file.
+        subbed = re.sub("\(\d\)", '', line)
+        # Get rid of new lines, split
+        split = subbed.replace('\n', '').split('  ', 1)
+        # Lowercase entry name
+        lower = split[0].lower()
+        # Add pronunciations to dict
+        dictionary[lower].append(split[1])
+    # Write dict as json
+    with open('text/cmudict_syllables.json', 'w') as file:
+        json.dump(dictionary, file, sort_keys=True, indent=0, separators=(',', ':'))
+
+
 # Logs a scansion in a readable form
 def print_scansion(scansion, prefix=''):
     if prefix:

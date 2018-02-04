@@ -2,6 +2,7 @@ import logging
 import nltk
 from translations import get_phonetic, get_rhymes
 from collections import Counter
+import re
 
 cmudict = nltk.corpus.cmudict.dict()
 
@@ -10,18 +11,28 @@ class Word:
     def __init__(self, word, pronunciations=None, parent=None):
         self.parent = parent
         self.plaintext = word
-        self.pronunciations = pronunciations
+
+        self.pronunciations = []
+        self.syl_pronunciations = pronunciations
         self.stresses = []
-        self.rhymes = []
+
+        self.p_rhymes = []
+        self.word_init_consonants = []
+        self.stressed_vowels = []
+        self.stress_initial_consonants = []
+        self.stress_final_consonants = []
+
         self.pos = Counter()
         self.wordnet_pos = Counter()
         self.synsets = {}
 
         # Get a pronunciation if the user hasn't provided one already.
-        if self.pronunciations:
-            logging.info("Pronunciation for \"%s\" provided as \"%s\"", word, ' '.join(self.pronunciations[0]))
+        if self.syl_pronunciations:
+            logging.info("Pronunciation for \"%s\" provided as \"%s\"", word, self.syl_pronunciations[0])
+            # If the user did provide one, assign it appropriately
+            self.pronunciations.append(re.sub(' - ', ' ', self.syl_pronunciations[0]).split(' '))
         else:
-            self.pronunciations = get_phonetic(word)
+            self.pronunciations, self.syl_pronunciations = get_phonetic(word)
 
         if self.pronunciations:
             for index, pronunciation in enumerate(self.pronunciations):
@@ -36,7 +47,8 @@ class Word:
                 # Sets the digit only versions as our stresses
 
                 # Gets rhymes
-                self.rhymes = get_rhymes(self.pronunciations)
+                self.p_rhymes, self.word_init_consonants, self.stressed_vowels, self.stress_initial_consonants, \
+                    self.stress_final_consonants = get_rhymes(self.pronunciations, self.syl_pronunciations)
 
     # Places (lists of) synsets in self.synsets under their pos key
     def get_synsets(self):

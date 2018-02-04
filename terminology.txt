@@ -14,8 +14,9 @@ Enjambment - The running-over of a sentence or phrase from one poetic line to th
 
 
 
+
 RHYMES
-Perfect rhyme: everything following the vowel sound in the first stressed syllable
+Perfect rhyme: everything following and including the vowel sound in the first stressed syllable
     Single rhyme (masculine): final stressed syllable
         Rising rhyme: single rhyme with a preceeding unstressed syllable
     Feminine rhyme (falling): vowel sound forward in the first stressed syllable with following unstressed syllables
@@ -25,6 +26,7 @@ Rich rhyme: the entire first stressed syllable and all following syllables
     Mirror rhyme: one of the rhyming words contains the other word entirely (e.g straight and rate)
         Cumulating verse: mirror rhyme in which each successive rhyming word is longer than the last
         Diminishing verse: mirror rhyme in which each successive rhyming word is shorter than the last
+
 
 Assonance: stressed vowel sound
     Vowel rhyme: assonance, potentially with the addition of unstressed vowel sounds

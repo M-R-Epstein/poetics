@@ -27,7 +27,7 @@ class Line:
 
     def get_rhymes(self):
         if self.final_word and self.parent:
-            self.rhyme_candidates = self.parent.words[self.final_word].rhymes
+            self.rhyme_candidates = self.parent.words[self.final_word].p_rhymes
         else:
             return False
 
