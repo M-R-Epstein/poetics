@@ -1,0 +1,48 @@
+Anaphora (the repetition of a word or phrase at the beginning of successive clauses)
+Chiasmus (would be fucking hard to detect)
+Palindrome
+Simile
+Synecdoche
+
+Caesura - stop/pause in a line. Medial/terminal/initial
+
+Elision - The omission of unstressed syllables (e.g., t'other for the other), usually to fit a metrical scheme.
+
+End-stopped - A metrical line ending at a grammatical boundary or break, such as a dash or closing parenthesis, or with punctuation such as a colon, a semicolon, or a period. A line is considered end-stopped, too, if it contains a complete phrase.
+Enjambment - The running-over of a sentence or phrase from one poetic line to the next, without terminal punctuation;
+
+
+
+
+RHYMES
+Perfect rhyme: everything following the vowel sound in the first stressed syllable
+    Single rhyme (masculine): final stressed syllable
+        Rising rhyme: single rhyme with a preceeding unstressed syllable
+    Feminine rhyme (falling): vowel sound forward in the first stressed syllable with following unstressed syllables
+        Double rhyme (trochaic): feminine rhyme with the stressed syllable followed by a single unstressed syllable
+        Triple rhyme (dactylic): feminine rhyme with the stressed syllable followed by two unstressed syllables
+Rich rhyme: the entire first stressed syllable and all following syllables
+    Mirror rhyme: one of the rhyming words contains the other word entirely (e.g straight and rate)
+        Cumulating verse: mirror rhyme in which each successive rhyming word is longer than the last
+        Diminishing verse: mirror rhyme in which each successive rhyming word is shorter than the last
+
+Assonance: stressed vowel sound
+    Vowel rhyme: assonance, potentially with the addition of unstressed vowel sounds
+Consonance (consonant or slant rhyme): the final consonant sound of the stressed syllable
+    Bracket consonance: all consonant sounds in the stressed syllable
+Alliteration: initial consonant sound of the stressed syllable (maybe, distinction from paroemion seems contentious)
+    Paroemion: the initial consonant sound of a word
+Unstressed rhyme: unstressed syllables
+Light rhyme: matching stressed with unstressed syllables
+
+Mosaic rhyme (compound): multiple words rhymed with a longer word or another set of word (e.g. this may and dismay)
+Broken rhyme: splitting a word across two lines to create a rhyme
+Enjambed rhyme: rhyme is completed by the first sound of the following line
+
+Eye rhyme (sight, visual): words that appear to rhyme based on their spelling but don't
+Wrenched rhyme: only a rhyme if you pronounce it wrong
+
+Initial rhyme (head): rhyming words are line initial
+Internal rhyme: word from the middle of a line rhymes, sometimes with a word in the same line
+Interlaced rhyme: middle word of one line rhymes with the middle word of another
+
