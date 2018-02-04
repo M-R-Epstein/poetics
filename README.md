@@ -11,7 +11,7 @@ python-Levenshtein==0.12.0
 ```python 
 create_poem(file, title=None, author=None, directory=poem_directory) 
 ```
-Makes a poem object. File should be a text file with a poem in it.  
+Makes a poem object. File should be a text file with a poem in it.  Default directory is /poems.
 
 **Poem Methods:**  
 ```python
@@ -53,7 +53,7 @@ record()
 ```python
 process_poems(directory=poem_directory)
 ```
-Batch processes a directory full of poems.
+Batch processes a directory full of poems. Default directory is /poems.
 
 ## Usage
 ```python
@@ -70,6 +70,7 @@ poem.get_scansion()
 poem.get_direct_scansion()
 poem.get_meter()
 poem.get_pos()
+poem.get_synsets()
 poem.record()
 
 # Batch operations.
