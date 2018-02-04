@@ -1,0 +1,8 @@
+--index-url https://pypi.python.org/simple/
+
+coloredlogs==8.0
+nltk==3.2.5
+#nltk corpora: cmudict, wordnet, words
+#nltk models: averaged_perceptron_tagger
+pyenchant==2.0.0
+python-Levenshtein==0.12.0
