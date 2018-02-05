@@ -15,7 +15,7 @@ Makes a poem object. File should be a text file with a poem in it.  Default dire
 
 **Poem Methods:**  
 ```python
- get_rhyming_scheme()
+ get_rhymes()
 ``` 
 >Detects rhymes and rhyming scheme, and attempts to identify rhyming scheme. Returns rhyming scheme.  
 
