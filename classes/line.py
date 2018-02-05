@@ -1,6 +1,5 @@
 from translations import tokenize
 import re
-import nltk
 
 
 class Line:
@@ -8,6 +7,7 @@ class Line:
         self.parent = parent
         self.plaintext = text
         self.tokenized_text = None
+        self.word_indexes = ()
 
         self.initial_word = None
         self.final_word = None
@@ -54,15 +54,14 @@ class Line:
         else:
             return ''
 
-    # Gets the parts of speech for tokenized line
-    # ToDo: Need to look deeper into pos tagging.
-    def get_pos(self):
-        if self.pos:
-            return self.pos
-        else:
-            if self.tokenized_text:
-                pos_list = nltk.pos_tag(self.tokenized_text)
-                for pos in pos_list:
-                    self.pos.append(pos[1])
-            else:
-                return False
+    # DEPRECATED: Gets the parts of speech for tokenized line. Now done on sentence level.
+    # def get_pos(self):
+    #     if self.pos:
+    #         return self.pos
+    #     else:
+    #         if self.tokenized_text:
+    #             pos_list = nltk.pos_tag(self.tokenized_text)
+    #             for pos in pos_list:
+    #                 self.pos.append(pos[1])
+    #         else:
+    #             return False
