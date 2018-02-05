@@ -6,12 +6,16 @@ import json
 
 cmudict = nltk.corpus.cmudict.dict()
 
-# Only loading our syllabilized dictionary once for performance
-with open('text/cmudict_syllables.json') as file:
-    syllables_dict = json.load(file)
-
 
 def syllable_dict(word):
+    global syllables_dict
+    # Load the dictionary from Json if we haven't already
+    try:
+        syllables_dict
+    except NameError:
+        with open('text/cmudict_syllables.json') as file:
+            syllables_dict = json.load(file)
+    # Return syllabified pronunciation if it's in there
     if word in syllables_dict:
         return syllables_dict[word]
     else:
