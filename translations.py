@@ -101,7 +101,7 @@ def get_rhymes(pronunciations, syl_pronunciations):
     for pronunciation in syl_pronunciations:
         stressed_syllable = ''
 
-        match = re.search('[\w\s]+(?=[a-zA-Z]{2}[0-2])', pronunciation)
+        match = re.search('^[\w\s]+(?=[a-zA-Z]{2}[0-2])', pronunciation)
         if match:
             word_init_consonants.append(match.group(0).strip())
 
