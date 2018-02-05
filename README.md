@@ -22,7 +22,7 @@ Makes a poem object. File should be a text file with a poem in it.  Default dire
 ```python
 get_scansion()  
 ```
-Calculates a best-guess at the poem's scansion. Returns scansion.  
+>Calculates a best-guess at the poem's scansion. Returns scansion.  
 
 ```python
 get_direct_scansion()
