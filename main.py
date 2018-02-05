@@ -11,7 +11,7 @@ coloredlogs.install(level='INFO', fmt='%(asctime)s: %(message)s', datefmt='%H:%M
 # Single Poem operations.
 # Optional arguments for create_poem() are title, author, and directory
 poem = create_poem('when my light is spent-john milton.txt')
-poem.get_rhyming_scheme()
+poem.get_rhymes()
 # poem.get_scansion()
 # poem.get_direct_scansion()
 # poem.get_meter()
