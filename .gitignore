@@ -1,6 +1,6 @@
 # Components that don't need updating
-poetics/output.csv
 poetics/poems/
+*.csv
 
 # Misc
 poetics/scratch.py

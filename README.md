@@ -45,9 +45,9 @@ get_synsets()
 >Gets wordnet synsets for words.  
 
 ```python
-record()
+record(outputfile='output.csv')
 ```
->Appends poem attributes to output.csv.  
+>Appends poem attributes to a csv file. Accepts a csv file as an argument, defaults to output.csv.  
 
 ### process_poems()
 ```python
