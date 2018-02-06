@@ -233,8 +233,6 @@ class Poem:
             print_scansion(self.joined_scansion)
             return self.joined_scansion
 
-
-    # TODO: HANDLE MULTIPLE POSSIBLE METERS!
     def get_meter(self):
         from poetics.utilities import name_meter
         if not self.meters:
@@ -268,22 +266,6 @@ class Poem:
                     logging.info("Meter for %s syllable lines not recognized.", length)
 
             return self.meters
-
-            # if self.matched_scan:
-            #     self.meter = name_meter(self.matched_scan)
-            #     logging.info("Apparent meter: %s", self.meter)
-            #     return self.meter
-            # elif self.predicted_scan:
-            #     self.meter = name_meter(self.predicted_scan)
-            #     logging.info("Apparent meter: %s", self.meter)
-            #     return self.meter
-            # else:
-            #     if self.joined_scansion:
-            #         logging.info("Apparent meter: unknown")
-            #     else:
-            #         logging.error("Scansion required to generate meter.")
-            #     return None
-
 
     def get_direct_scansion(self):
         from poetics.utilities import print_scansion
