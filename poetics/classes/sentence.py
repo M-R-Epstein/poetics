@@ -8,7 +8,7 @@ class Sentence:
     def __init__(self, text, parent=None):
         self.parent = parent
         self.plaintext = text
-        self.tokenized_text = None
+        self.tokenized_text = []
         self.word_indexes = ()
 
         self.pos = []
