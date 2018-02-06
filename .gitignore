@@ -1,9 +1,9 @@
 # Components that don't need updating
-output.csv
-poems/
+poetics/output.csv
+poetics/poems/
 
 # Misc
-scratch.py
+poetics/scratch.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
