@@ -216,7 +216,7 @@ def name_rhyme(rhyme):
 
 def create_poem(filename, title=None, author=None, directory=poem_directory):
     import re
-    from classes.poem import Poem
+    from poetics.classes.poem import Poem
 
     with open(directory + '/' + filename) as data:
         read_data = data.readlines()
@@ -242,10 +242,10 @@ def create_poem(filename, title=None, author=None, directory=poem_directory):
     return Poem(read_data, title, author)
 
 
-def process_poems(directory=poem_directory):
+def process_poems(directory=poem_directory, outputfile='output.csv'):
     import os
     import re
-    from classes.poem import Poem
+    from poetics.classes.poem import Poem
 
     # Does the provided directory exist?
     if not os.path.isdir(directory):
@@ -280,8 +280,8 @@ def process_poems(directory=poem_directory):
 
             # Create poem, do stuff, record
             poem = Poem(read_data, name, author)
-            poem.get_rhyming_scheme()
+            poem.get_rhymes()
             poem.get_scansion()
             poem.get_meter()
             poem.get_pos()
-            poem.record()
+            poem.record(outputfile)

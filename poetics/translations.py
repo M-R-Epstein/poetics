@@ -8,12 +8,16 @@ cmudict = nltk.corpus.cmudict.dict()
 
 
 def syllable_dict(word):
+    import os
+    directory = os.path.dirname(__file__)
+    syllables_dir = os.path.join(directory, 'text/cmudict_syllables.json')
+
     global syllables_dict
     # Load the dictionary from Json if we haven't already
     try:
         syllables_dict
     except NameError:
-        with open('text/cmudict_syllables.json') as file:
+        with open(syllables_dir) as file:
             syllables_dict = json.load(file)
     # Return syllabified pronunciation if it's in there
     if word in syllables_dict:
@@ -98,6 +102,7 @@ def get_rhymes(pronunciations, syl_pronunciations):
 
     # Obtains word-initial consonant sounds,
     # Note: Currently words without stress are ignored for stress-relative features.
+    # TODO: word_init_consonants and stressed_vowels don't actually need to be done on the syllabified version
     for pronunciation in syl_pronunciations:
         stressed_syllable = ''
 
