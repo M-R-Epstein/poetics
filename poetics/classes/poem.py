@@ -22,19 +22,19 @@ class Poem:
         self.lines = []
         self.line_indexes = []
         self.sentences = []
-
         self.words = {}
         self.wordlist = []
+
         self.unrecognized_words = []
         self.provided_pronunciations = {}
         self.rhyme_scheme = ''
+
         self.direct_scansion = []
         self.joined_direct_scansion = []
         self.joined_scansion = []
-        self.predicted_scan = ''
-        self.matched_scan = ''
-        self.best_scansion = []
-        self.meter = None
+        self.sorted_scansion = {}
+        self.scans = {}
+        self.meters = []
 
         self.pos_count = Counter()
         self.simple_pos_count = Counter()
@@ -52,9 +52,16 @@ class Poem:
 
         # Creates sentence objects for each sentence.
         joined_text = re.sub('\n', '/', ' '.join(text))
-        # TODO: Should probably consider re-splitting on colons and semicolons after NLTK had done its thing
-        sentences = tokenize.sent_tokenize(joined_text)
-        for sentence in sentences:
+
+        # Uses NLTK tokenizer to split into sentences (it deals with abbreviations and such)
+        tokenized_sentences = []
+        nltk_sentences = tokenize.sent_tokenize(joined_text)
+        # Then splits again on colons/semi-colons
+        for sentence in nltk_sentences:
+            resplit = re.split(';|:', sentence)
+            tokenized_sentences.extend(resplit)
+
+        for sentence in tokenized_sentences:
             self.sentences.append(Sentence(sentence, self))
 
         # Creates Line objects for each line
@@ -167,96 +174,116 @@ class Poem:
             return self.rhyme_scheme
 
     def get_scansion(self):
-        from poetics.utilities import print_scansion, check_metres
+        from poetics.utilities import print_scansion, check_metres, predict_scan
 
         if not self.joined_scansion:
-            scan_counts = []
             # If we don't have a scansion calculated then request a scansion from each line
             for line in self.lines:
                 self.direct_scansion.append(line.get_scansion())
             # Make a version of scansion where each line is a string instead of a list of word stresses
             for index, line in enumerate(self.direct_scansion):
                 self.joined_scansion.append(''.join(self.direct_scansion[index]))
+            # Store a direct scansion before we do anything with it
             self.joined_direct_scansion = self.joined_scansion
-            # Create a list of lines that are not blank
-            non_blank_lines = [item for item in self.joined_scansion if len(item) > 0]
 
-            # TODO: Need to handle variance in syllables per line. Break lines into groups by length, probably.
-            # Create a predicted scan after checking if all lines are the same length
-            if len(max(non_blank_lines, key=len)) == len(min(non_blank_lines, key=len)):
-                # Add the appropriate number of elements to track stress appearance by syllable
-                for x in range(0, len(self.joined_scansion[0])):
-                    scan_counts.append([int(0), int(0)])
-                # Increment counts for stress appearance by syllable position
-                for line in self.joined_scansion:
-                    for index, stress in enumerate(line):
-                        if stress == '1' or stress == '0':
-                            scan_counts[index][int(stress)] += 1
-                # Create a predicted scan based on most common stress/lack at position in lines
-                for position in scan_counts:
-                    max_value = max(position)
-                    self.predicted_scan += str(position.index(max_value))
-
-            # If we made a prediction, see if it is a close match to any known metres
-            self.matched_scan = check_metres(self.predicted_scan)
-
-            if self.predicted_scan:
-                # If we found a well-matched metrical pattern, use it to resolve single syllable words
-                if self.matched_scan:
-                    for index, line in enumerate(self.joined_scansion):
-                        line = ''
-                        for index2, stress in enumerate(self.joined_scansion[index]):
-                            if self.joined_scansion[index][index2] == '3':
-                                line += self.matched_scan[index2]
-                            else:
-                                line += self.joined_scansion[index][index2]
-                        self.best_scansion.append(line)
-                    print_scansion(self.best_scansion)
-                    return self.best_scansion
-                # If we have a predicted scan but no well-matched metrical pattern, use the predicted scan
+            # Make a dictionary object that sorts lines into groups by their scan length
+            for index, scan in enumerate(self.joined_scansion):
+                length = len(scan)
+                if length in self.sorted_scansion:
+                    self.sorted_scansion[length].append((index, scan))
                 else:
-                    for index, line in enumerate(self.joined_scansion):
-                        line = ''
+                    self.sorted_scansion[length] = []
+                    self.sorted_scansion[length].append((index, scan))
+
+            # Create another similar dict of scan predictions and matches by length
+            for length, lines in self.sorted_scansion.items():
+                scans = [line[1] for line in lines]
+                predicted = predict_scan(scans)
+                best_match = check_metres(predicted)
+                self.scans[length] = (predicted, best_match)
+
+            for length, scans in self.scans.items():
+                line_indexes = [entry[0] for entry in self.sorted_scansion[length]]
+                # If we found a well-matched metrical pattern for a given line length, we use it for 1 syllable words
+                if scans[1]:
+                    for index in line_indexes:
+                        final_scan = ''
                         for index2, stress in enumerate(self.joined_scansion[index]):
-                            if self.joined_scansion[index][index2] == '3':
-                                line += self.predicted_scan[index2]
+                            if int(stress) > 2:
+                                final_scan += scans[1][index2]
                             else:
-                                line += self.joined_scansion[index][index2]
-                        self.best_scansion.append(line)
-                    print_scansion(self.best_scansion)
-                    return self.best_scansion
-            else:
-                print_scansion(self.joined_scansion)
-                return self.joined_scansion
+                                final_scan += self.joined_scansion[index][index2]
+                        self.joined_scansion[index] = final_scan
+                # Otherwise use our predicted pattern
+                else:
+                    for index in line_indexes:
+                        final_scan = ''
+                        for index2, stress in enumerate(self.joined_scansion[index]):
+                            if int(stress) > 2:
+                                final_scan += scans[0][index2]
+                            else:
+                                final_scan += self.joined_scansion[index][index2]
+                        self.joined_scansion[index] = final_scan
+
+            print_scansion(self.joined_scansion)
+            return self.joined_scansion
+
         # If we have already generated a scansion, return it
         else:
-            if self.best_scansion:
-                print_scansion(self.best_scansion)
-                return self.best_scansion
-            else:
-                print_scansion(self.joined_scansion)
-                return self.joined_scansion
+            print_scansion(self.joined_scansion)
+            return self.joined_scansion
 
+
+    # TODO: HANDLE MULTIPLE POSSIBLE METERS!
     def get_meter(self):
         from poetics.utilities import name_meter
-        if not self.meter:
-            if self.matched_scan:
-                self.meter = name_meter(self.matched_scan)
-                logging.info("Apparent meter: %s", self.meter)
-                return self.meter
-            elif self.predicted_scan:
-                self.meter = name_meter(self.predicted_scan)
-                logging.info("Apparent meter: %s", self.meter)
-                return self.meter
-            else:
-                if self.joined_scansion:
-                    logging.info("Apparent meter: unknown")
+        if not self.meters:
+            for length, scans in self.scans.items():
+                if scans[1]:
+                    self.meters.append((length, name_meter(scans[1])))
                 else:
-                    logging.error("Scansion required to generate meter.")
-                return None
+                    self.meters.append((length, name_meter(scans[0])))
+
+            # Get sorted lists of non-zero length meter names that were recognized/not for logging
+            recognized = sorted([(length, name) for length, name in self.meters
+                                 if length > 0 and name != 'unrecognized'])
+            unrecognized = sorted([(length, name) for length, name in self.meters
+                                   if length > 0 and name == 'unrecognized'])
+            if recognized:
+                logging.info("Apparent meter(s): %s", ', '.join(name for length, name in recognized))
+            if unrecognized:
+                for length, name in unrecognized:
+                    logging.info("Meter for %s syllable lines not recognized.", length)
+
         else:
-            logging.info("Apparent meter: %s", self.meter)
-            return self.meter
+            # Get sorted lists of non-zero length meter names that were recognized/not for logging
+            recognized = sorted([(length, name) for length, name in self.meters
+                                 if length > 0 and name != 'unrecognized'])
+            unrecognized = sorted([(length, name) for length, name in self.meters
+                                   if length > 0 and name == 'unrecognized'])
+            if recognized:
+                logging.info("Apparent meter(s): %s", ', '.join(name for length, name in recognized))
+            if unrecognized:
+                for length, name in unrecognized:
+                    logging.info("Meter for %s syllable lines not recognized.", length)
+
+            return self.meters
+
+            # if self.matched_scan:
+            #     self.meter = name_meter(self.matched_scan)
+            #     logging.info("Apparent meter: %s", self.meter)
+            #     return self.meter
+            # elif self.predicted_scan:
+            #     self.meter = name_meter(self.predicted_scan)
+            #     logging.info("Apparent meter: %s", self.meter)
+            #     return self.meter
+            # else:
+            #     if self.joined_scansion:
+            #         logging.info("Apparent meter: unknown")
+            #     else:
+            #         logging.error("Scansion required to generate meter.")
+            #     return None
+
 
     def get_direct_scansion(self):
         from poetics.utilities import print_scansion

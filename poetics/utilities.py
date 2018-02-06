@@ -120,7 +120,8 @@ def print_scansion(scansion, prefix=''):
     index_mod = 1
     logging.info("%sScansion:", prefix)
     for index, scan in enumerate(scansion):
-        scansion[index] = scansion[index].replace("3", "?")
+        scansion[index] = scansion[index].replace("3", "̲0")
+        scansion[index] = scansion[index].replace("4", "̲1")
         if scan == '':
             logging.info('')
             index_mod -= 1
@@ -128,11 +129,36 @@ def print_scansion(scansion, prefix=''):
             logging.info("%s (%s)", scansion[index], index + index_mod)
 
 
+def predict_scan(scans):
+    scan_counts = []
+    predicted_scan = ''
+    if len(scans[0]) < 1:
+        return ''
+    else:
+        # Add the appropriate number of elements to track stress appearance by syllable
+        for x in range(0, len(scans[0])):
+            scan_counts.append([int(0), int(0)])
+        # Increment counts for stress appearance by syllable position
+        for line in scans:
+            for index, stress in enumerate(line):
+                if stress == '1' or stress == '0':
+                    scan_counts[index][int(stress)] += 1
+        # TODO: Need to address columns where we have no data at all.
+        # Create a predicted scan based on most common stress/lack at position in lines
+        for position in scan_counts:
+            max_value = max(position)
+            predicted_scan += str(position.index(max_value))
+        return predicted_scan
+
+
 # Checks how well a calculated most common stress pattern for the lines of a poem matches standard metres
 def check_metres(predicted):
     from Levenshtein import distance, ratio
     foot_patterns = []
     plausible_meters = []
+
+    # TODO: Add handling for adding a sincle 3 syllable foot to beginning/end of string if its an odd number
+    # TODO: and we have no other valid length options
 
     # If the length of our scan is divisble by 2, add patterns for repeated 2 syllable feet
     if len(predicted) % 2 == 0:
@@ -172,6 +198,11 @@ def name_meter(pattern):
     foot = None
     foot_name = None
     repetitions = None
+
+    # Don't bother for blank lines
+    if len(pattern) == 0:
+        return None
+
     # Try to match a 2 syllable foot
     if len(pattern) % 2 == 0:
         split = [pattern[i:i + 2] for i in range(0, len(pattern), 2)]
@@ -202,9 +233,9 @@ def name_meter(pattern):
             meter = meter_names[repetitions - 1]
             return foot_adj + ' ' + meter
         else:
-            return 'unknown'
+            return 'unrecognized'
     else:
-        return 'unknown'
+        return 'unrecognized'
 
 
 def name_rhyme(rhyme):

@@ -40,7 +40,10 @@ class Word:
                 # Filters to only keep digits
                 stress = ''.join(filter(lambda x: x.isdigit(), joined))
                 if len(stress) == 1:
-                    self.stresses.append('3')
+                    if stress == '0':
+                        self.stresses.append('3')
+                    elif stress == '1':
+                        self.stresses.append('4')
                 else:
                     self.stresses.append(stress)
                 # Sets the digit only versions as our stresses
