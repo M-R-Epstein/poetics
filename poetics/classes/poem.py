@@ -39,7 +39,7 @@ class Poem:
         self.pos_count = Counter()
         self.simple_pos_count = Counter()
 
-        # Note: Will probably need some concept of stanzas at some point
+        # Note: May need some concept of stanzas at some point
         # Loop through lines of the text checking to see if any of them have a pronunciation provided
         for index, line in enumerate(text):
             found_pronunciations = re.findall("[\w\']+{[A-Z0-9\s-]+}", line)
@@ -51,14 +51,13 @@ class Poem:
                 text[index] = re.sub("{[A-Z0-9\s]+}", "", text[index])
 
         # Creates sentence objects for each sentence.
-        joined_text = re.sub('\n', '/', ' '.join(text))
-
-        # Uses NLTK tokenizer to split into sentences (it deals with abbreviations and such)
+        joined_text = re.sub('\n', '', ' '.join(text))
         tokenized_sentences = []
+        # Uses NLTK tokenizer to split into sentences (it deals with abbreviations and such)
         nltk_sentences = tokenize.sent_tokenize(joined_text)
-        # Then splits again on colons/semi-colons
+        # Then splits again on colons/semi-colons/exclamation points/question marks
         for sentence in nltk_sentences:
-            resplit = re.split(';|:', sentence)
+            resplit = re.split('[;:]', sentence)
             tokenized_sentences.extend(resplit)
 
         for sentence in tokenized_sentences:
@@ -120,15 +119,28 @@ class Poem:
                     rhyme_counts[line.rhyme_candidates[0]] += 1
                     line.rhyme = line.rhyme_candidates[0]
 
-            # ToDo: Handle multiple lines that only rhyme with eachother but each have multiple pronunciations
-            # Chooses the candidate rhyme that has appeared most often elsewhere for lines with multiple candidates.
-            # If none of the candidate rhymes have ever appeared elsewhere, selects the first one.
-            for line in self.lines:
+            # Handles lines with multiple rhyme candidates
+            multi_rhyme_lines = [line for line in self.lines if len(line.rhyme_candidates) > 1]
+            rhyme_counts_mult = Counter()
+            # If we have multi-rhyme lines, then create a counter for their rhyme options.
+            for line in multi_rhyme_lines:
+                for candidate in line.rhyme_candidates:
+                    rhyme_counts_mult[candidate] += 1
+
+            for line in multi_rhyme_lines:
                 appearance_count = []
-                if len(line.rhyme_candidates) > 1:
-                    for candidate in line.rhyme_candidates:
-                        appearance_count.append(rhyme_counts[candidate])
+                appearance_count_mult = []
+                # Create counts of the appearances of the candidate rhymes in resolved lines, and unresolved lines
+                for candidate in line.rhyme_candidates:
+                    appearance_count.append(rhyme_counts[candidate])
+                    appearance_count_mult.append(rhyme_counts_mult[candidate])
+                # If we have a rhyme match to resolved lines, pick the one that matches the most lines
+                if max(appearance_count) > 1:
                     line.rhyme = line.rhyme_candidates[appearance_count.index(max(appearance_count))]
+                # If not, pick a rhyme based on how many unresolved lines it matches with (if any)
+                else:
+                    line.rhyme = line.rhyme_candidates[appearance_count_mult.index(max(appearance_count_mult))]
+
 
             # Creates an ordered dictionary that stores the appearances of rhymes in the poem in order
             rhyme_order = OrderedDict()
