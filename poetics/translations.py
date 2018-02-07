@@ -102,7 +102,6 @@ def get_rhymes(pronunciations, syl_pronunciations):
 
     # Obtains word-initial consonant sounds,
     # Note: Currently words without stress are ignored for stress-relative features.
-    # TODO: word_init_consonants and stressed_vowels don't actually need to be done on the syllabified version
     for pronunciation in syl_pronunciations:
         stressed_syllable = ''
 
