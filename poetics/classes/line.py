@@ -38,12 +38,12 @@ class Line:
                 if self.parent.words[word].stresses:
                     if len(set(self.parent.words[word].stresses)) == 1:
                         self.scansion.append(self.parent.words[word].stresses[0].replace('2', '0'))
-                    # ToDo: Need to decide what stress pattern to use based on the meter we are generating later
-                    # ToDo: Easiest way might be to just use the first one unless we have a meter calculated
-                    # ToDo: And then to recalculate scansion after all of that business
-                    # ToDo: OR we could have the line store all possible scansions and then resolve them later
+                    # Note: May want a better solution for words with multiple possible stress patterns.
+                    # Note: This mostly seems to occur in words that are ambigious w/o stress (present)
                     # If there are multiple (unique) stress patterns, currently uses the first one.
                     elif len(set(self.parent.words[word].stresses)) > 1:
+                        print(word)
+                        print(self.parent.words[word].stresses)
                         self.scansion.append(self.parent.words[word].stresses[0].replace('2', '0'))
                     # Put in a question mark if we have no stress pattern
                     else:
