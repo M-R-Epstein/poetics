@@ -47,17 +47,17 @@ class Word:
                 else:
                     self.stresses.append(stress)
 
-                # Gets rhymes
-                self.p_rhymes, self.word_init_consonants, self.stressed_vowels, self.stress_initial_consonants, \
-                    self.stress_final_consonants = get_rhymes(self.pronunciations, self.syl_pronunciations)
+                (self.p_rhymes, self.word_init_consonants, self.stressed_vowels, self.stress_initial_consonants,
+                 self.stress_final_consonants) = get_rhymes(self.pronunciations, self.syl_pronunciations)
 
-    # Places (lists of) synsets in self.synsets under their pos key
-    def get_synsets(self):
-        from nltk.corpus import wordnet
-        for pos in self.wordnet_pos:
-            returned = wordnet.synsets(self.plaintext, pos=pos)
-            # Note: Should probably try specifying no part of speech if we get no return. Depends on quality of tagger.
-            # TODO: Need to check out Morphy for handling word forms for wordnet
-            logging.debug('Search for %s as %s returned:\n %s', self.plaintext, pos, returned)
-            if returned:
-                self.synsets[pos] = returned
+
+# Places (lists of) synsets in self.synsets under their pos key
+def get_synsets(self):
+    from nltk.corpus import wordnet
+    for pos in self.wordnet_pos:
+        returned = wordnet.synsets(self.plaintext, pos=pos)
+        # Note: Should probably try specifying no part of speech if we get no return. Depends on quality of tagger.
+        # TODO: Need to check out Morphy for handling word forms for wordnet
+        logging.debug('Search for %s as %s returned:\n %s', self.plaintext, pos, returned)
+        if returned:
+            self.synsets[pos] = returned
