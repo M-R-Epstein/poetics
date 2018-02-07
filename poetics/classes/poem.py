@@ -141,7 +141,6 @@ class Poem:
                 else:
                     line.rhyme = line.rhyme_candidates[appearance_count_mult.index(max(appearance_count_mult))]
 
-
             # Creates an ordered dictionary that stores the appearances of rhymes in the poem in order
             rhyme_order = OrderedDict()
             for line in self.lines:
@@ -167,23 +166,15 @@ class Poem:
             for sentence in self.sentences:
                 sentence.get_rhymes()
 
-            # Get the rhyming scheme name, return it
-            scheme_name = name_rhyme(self.rhyme_scheme)
+        # Get the rhyming scheme name, return it
+        scheme_name = name_rhyme(self.rhyme_scheme)
 
-            logging.info("Rhyming Scheme: %s", self.rhyme_scheme)
-            if scheme_name:
-                logging.info("Apparent form: %s", scheme_name)
-            for sentence in self.sentences:
-                sentence.print_rhyme()
-            return self.rhyme_scheme
-
-        # If we do have a rhyming scheme already, return it
-        else:
-            scheme_name = name_rhyme(self.rhyme_scheme)
-            logging.info("Rhyming Scheme: %s", self.rhyme_scheme)
-            if scheme_name:
-                logging.info("Apparent Form: %s", scheme_name)
-            return self.rhyme_scheme
+        logging.info("Rhyming Scheme: %s", self.rhyme_scheme)
+        if scheme_name:
+            logging.info("Apparent form: %s", scheme_name)
+        for sentence in self.sentences:
+            sentence.print_rhyme()
+        return self.rhyme_scheme
 
     def get_scansion(self):
         from poetics.utilities import print_scansion, check_metres, predict_scan
@@ -195,8 +186,9 @@ class Poem:
             # Make a version of scansion where each line is a string instead of a list of word stresses
             for index, line in enumerate(self.direct_scansion):
                 self.joined_scansion.append(''.join(self.direct_scansion[index]))
+
             # Store a direct scansion before we do anything with it
-            self.joined_direct_scansion = self.joined_scansion
+            self.joined_direct_scansion = list(self.joined_scansion)
 
             # Make a dictionary object that sorts lines into groups by their scan length
             for index, scan in enumerate(self.joined_scansion):
@@ -210,84 +202,58 @@ class Poem:
             # Create another similar dict of scan predictions and matches by length
             for length, lines in self.sorted_scansion.items():
                 scans = [line[1] for line in lines]
-                predicted = predict_scan(scans)
-                best_match = check_metres(predicted)
-                self.scans[length] = (predicted, best_match)
+                predicted, merged = predict_scan(scans)
+                best_match = check_metres(predicted, merged)
+                self.scans[length] = (predicted, merged, best_match)
 
             for length, scans in self.scans.items():
                 line_indexes = [entry[0] for entry in self.sorted_scansion[length]]
                 # If we found a well-matched metrical pattern for a given line length, we use it for 1 syllable words
-                if scans[1]:
+                if scans[2]:
                     for index in line_indexes:
                         final_scan = ''
                         for index2, stress in enumerate(self.joined_scansion[index]):
                             if int(stress) > 2:
-                                final_scan += scans[1][index2]
+                                final_scan += scans[2][index2]
                             else:
                                 final_scan += self.joined_scansion[index][index2]
                         self.joined_scansion[index] = final_scan
-                # Otherwise use our predicted pattern
+                # If we can't get a match, then just use the direct scansion.
                 else:
                     for index in line_indexes:
                         final_scan = ''
-                        for index2, stress in enumerate(self.joined_scansion[index]):
+                        for index2, stress in enumerate(self.joined_direct_scansion[index]):
                             if int(stress) > 2:
-                                final_scan += scans[0][index2]
+                                final_scan += str(int(stress) - 3)
                             else:
-                                final_scan += self.joined_scansion[index][index2]
+                                final_scan += stress
                         self.joined_scansion[index] = final_scan
 
-            print_scansion(self.joined_scansion)
-            return self.joined_scansion
-
-        # If we have already generated a scansion, return it
-        else:
-            print_scansion(self.joined_scansion)
-            return self.joined_scansion
+        print_scansion(self.joined_scansion)
+        return self.joined_scansion
 
     def get_meter(self):
         from poetics.utilities import name_meter
         if not self.meters:
             for length, scans in self.scans.items():
-                if scans[1]:
-                    self.meters.append((length, name_meter(scans[1])))
+                if scans[2]:
+                    self.meters.append((length, name_meter(scans[2])))
                 else:
                     self.meters.append((length, name_meter(scans[0])))
-
-            # Get sorted lists of non-zero length meter names that were recognized/not for logging
-            recognized = sorted([(length, name) for length, name in self.meters
-                                 if length > 0 and name != 'unrecognized'])
-            unrecognized = sorted([(length, name) for length, name in self.meters
-                                   if length > 0 and name == 'unrecognized'])
-            if recognized:
-                logging.info("Apparent meter(s): %s", ', '.join(name for length, name in recognized))
-            if unrecognized:
-                for length, name in unrecognized:
-                    logging.info("Meter for %s syllable lines not recognized.", length)
-
-        else:
-            # Get sorted lists of non-zero length meter names that were recognized/not for logging
-            recognized = sorted([(length, name) for length, name in self.meters
-                                 if length > 0 and name != 'unrecognized'])
-            unrecognized = sorted([(length, name) for length, name in self.meters
-                                   if length > 0 and name == 'unrecognized'])
-            if recognized:
-                logging.info("Apparent meter(s): %s", ', '.join(name for length, name in recognized))
-            if unrecognized:
-                for length, name in unrecognized:
-                    logging.info("Meter for %s syllable lines not recognized.", length)
-
-            return self.meters
+        # Get sorted lists of non-zero length meter names that were recognized/not for logging
+        meters = sorted([(length, name) for length, name in self.meters if length > 0])
+        # Log 'em
+        if meters:
+            logging.info("Apparent meter(s): %s", ', '.join([name + ' (' + str(length) + ')'
+                                                             for length, name in meters]))
+        return self.meters
 
     def get_direct_scansion(self):
         from poetics.utilities import print_scansion
-        if self.joined_scansion:
-            print_scansion(self.joined_direct_scansion, 'Direct')
-            return self.joined_direct_scansion
-        else:
+        if not self.joined_scansion:
             self.get_scansion()
-            print_scansion(self.joined_direct_scansion, 'Direct')
-            return self.joined_direct_scansion
+        print_scansion(self.joined_direct_scansion, 'Direct')
+        return self.joined_direct_scansion
 
     # Gets parts of speech for sentences/lines/words
     def get_pos(self):
@@ -385,8 +351,8 @@ class Poem:
                 wordcount += len(line.tokenized_text)
             output.append(wordcount)
             output.append(self.rhyme_scheme)
-            output.append(self.matched_scan)
-            output.append(self.meter)
+            output.append(self.scans)
+            output.append(self.meters)
             for pos in pos_out:
                 output.append(self.simple_pos_count[pos])
 
