@@ -38,7 +38,7 @@ class Word:
                 # Joins all of the sounds together into a single string per pronunciation
                 joined = ''.join(sound for pronunciation in self.pronunciations[index] for sound in pronunciation)
                 # Filters to only keep digits
-                stress = ''.join(filter(lambda x: x.isdigit(), joined))
+                stress = ''.join(filter(lambda x: x.isdigit(), joined)).replace('2', '0')
                 if len(stress) == 1:
                     if stress == '0':
                         self.stresses.append('3')
@@ -46,7 +46,6 @@ class Word:
                         self.stresses.append('4')
                 else:
                     self.stresses.append(stress)
-                # Sets the digit only versions as our stresses
 
                 # Gets rhymes
                 self.p_rhymes, self.word_init_consonants, self.stressed_vowels, self.stress_initial_consonants, \
