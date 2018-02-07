@@ -127,7 +127,6 @@ def get_rhymes(pronunciations, syl_pronunciations):
             stress_final_consonants.append(match.group(0).strip())
 
     # Iterates through the pronunciations provided to extract perfect rhymes
-    # Note: Currently includes secondary stress in perfect rhyme.
     for index, pronunciation in enumerate(pronunciations):
         joined = ' '.join(pronunciations[index])
         first_stress = re.search("[a-zA-Z]{1,2}1[\w|\s]*", joined)
