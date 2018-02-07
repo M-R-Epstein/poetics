@@ -39,7 +39,9 @@ metrical_foot_adj = {'pyrrhic': 'pyrrhic', 'iamb': 'iambic', 'trochee': 'trochai
                      'fourth epitrite': 'fourth epitritic', 'dispondee': 'dispondaic'}
 meter_names = ['monometer', 'dimeter', 'trimeter', 'tetrameter', 'pentameter', 'hexameter', 'heptameter',
                'octameter', 'nonameter', 'decameter', 'undecameter', 'dodecameter', 'tridecameter', 'tetradecameter',
-               'pentadecameter', 'hexadecameter', 'heptadecameter', 'octadecameter', 'nonadecameter', 'icosameter']
+               'pentadecameter', 'hexadecameter', 'heptadecameter', 'octadecameter', 'nonadecameter', 'icosameter',
+               'henicosameter', 'docosameter', 'tricosameter', 'tetracosameter', 'pentacosameter', 'hexacosameter',
+               'heptacosameter', 'octacosameter', 'nonacosameter', 'triacontameter']
 
 
 # Writes a wordlist from CMUdict to text/wordlist.txt
@@ -131,57 +133,90 @@ def print_scansion(scansion, prefix=''):
 
 def predict_scan(scans):
     scan_counts = []
+    scan_counts_single = []
     predicted_scan = ''
+    predicted_scan_single = ''
     if len(scans[0]) < 1:
         return ''
     else:
         # Add the appropriate number of elements to track stress appearance by syllable
+        # scan_counts_single separately tracks stress appearance for single syllable words
         for x in range(0, len(scans[0])):
             scan_counts.append([int(0), int(0)])
+            scan_counts_single.append([int(0), int(0)])
         # Increment counts for stress appearance by syllable position
         for line in scans:
             for index, stress in enumerate(line):
                 if stress == '1' or stress == '0':
                     scan_counts[index][int(stress)] += 1
-        # TODO: Need to address columns where we have no data at all.
-        # Create a predicted scan based on most common stress/lack at position in lines
-        for position in scan_counts:
-            max_value = max(position)
-            predicted_scan += str(position.index(max_value))
-        return predicted_scan
+                if stress == '3' or stress == '4':
+                    scan_counts_single[index][int(stress) - 3] += 1
+        # Note: Columns where we have no data to indicate stress/lack are currently defaulting to unstressed
+        # Create a predicted scan based on most common stress/lack at position in lines for multi-syllable words
+        for index, position in enumerate(scan_counts):
+            if max(position) > 0:
+                max_value = max(position)
+                predicted_scan += str(position.index(max_value))
+            # If we have no data for a column, we mark it with 9
+            else:
+                predicted_scan += '9'
+        # Do the same for single syllable words
+        for index, position in enumerate(scan_counts_single):
+            if max(scan_counts_single[index]) > 0:
+                max_value = max(position)
+                predicted_scan_single += str(position.index(max_value))
+            # If we have no data for a column, we mark it with 9
+            else:
+                predicted_scan_single += '9'
+        merged = ''
+        for index, position in enumerate(predicted_scan):
+            if position == '9':
+                merged += predicted_scan_single[index]
+            else:
+                merged += position
+        return predicted_scan, merged
 
 
 # Checks how well a calculated most common stress pattern for the lines of a poem matches standard metres
-def check_metres(predicted):
+def check_metres(predicted, merged):
     from Levenshtein import distance, ratio
     foot_patterns = []
     plausible_meters = []
 
-    # TODO: Add handling for adding a sincle 3 syllable foot to beginning/end of string if its an odd number
-    # TODO: and we have no other valid length options
-
     # If the length of our scan is divisble by 2, add patterns for repeated 2 syllable feet
     if len(predicted) % 2 == 0:
         for foot in metrical_feet_2:
-            meter = foot * (len(predicted) // 2)
-            foot_patterns.append(meter)
+            foot_patterns.append(foot * (len(predicted) // 2))
     # If the length of our scan is divisible by 3, add patterns for repeated 3 syllable feet
     if len(predicted) % 3 == 0:
         for foot in metrical_feet_3:
-            meter = foot * (len(predicted) // 3)
-            foot_patterns.append(meter)
+            foot_patterns.append(foot * (len(predicted) // 3))
     # If the length of our scan is divisible by 4, add patterns for repeated 4 syllable feet
     if len(predicted) % 4 == 0:
         for foot in metrical_feet_4:
-            meter = foot * (len(predicted) // 4)
-            foot_patterns.append(meter)
+            foot_patterns.append(foot * (len(predicted) // 4))
+    # If we haven't got any patterns yet, generate some possibilities
+    # Length must be odd and indivisible by 3 or 4 for this to happen
+    if not foot_patterns:
+        for foot in metrical_feet_2:
+            # Add repeated 2 beat metrical feet with an additional stressed/unstressed syllable for comparison
+            foot_patterns.append((foot * (len(predicted) // 2)) + '1')
+            foot_patterns.append((foot * (len(predicted) // 2)) + '0')
+            foot_patterns.append('1' + (foot * (len(predicted) // 2)))
+            foot_patterns.append('0' + (foot * (len(predicted) // 2)))
 
-    # See if Levenshtein ratio suggests that any of our patterns are a good match
-    # Note: Not sure what minimum value is ideal for a meter to be considered a good match.
+    # See if Levenshtein ratio suggests that any of our patterns are a good match for our multi-word prediction
+    # 0.8 seems to be a reasonable ratio value to set as a floor, may need more testing
     for pattern in foot_patterns:
-        if ratio(pattern, predicted) >= 0.9:
+        if ratio(pattern, predicted) >= 0.8:
             plausible_meters.append(pattern)
-    # If we only ended up with one plausible pattern, return it
+
+    # If we didn't find a good match, then check against the pattern that considers 1 syllable words
+    if not plausible_meters:
+        for pattern in foot_patterns:
+            if ratio(pattern, merged) >= 0.7:
+                plausible_meters.append(pattern)
+
     if len(plausible_meters) == 1:
         return plausible_meters[0]
     # If we get multiple plausible patterns, use Levenshtein distance to find the best match
@@ -197,8 +232,8 @@ def check_metres(predicted):
 def name_meter(pattern):
     foot = None
     foot_name = None
+    foot_names = []
     repetitions = None
-
     # Don't bother for blank lines
     if len(pattern) == 0:
         return None
@@ -209,7 +244,7 @@ def name_meter(pattern):
         if len(set(split)) == 1:
             foot = split[0]
             foot_name = metrical_feet_2[foot]
-            repetitions = len(pattern) // 2
+            repetitions = len(split)
     # Try to match a 3 syllable foot if no 2 syllable feet matched
     if not foot:
         if len(pattern) % 3 == 0:
@@ -217,7 +252,7 @@ def name_meter(pattern):
             if len(set(split)) == 1:
                 foot = split[0]
                 foot_name = metrical_feet_3[foot]
-                repetitions = len(pattern) // 3
+                repetitions = len(split)
     # Try to match a 4 syllable foot if no 2 or 3 syllable feet matched
     if not foot:
         if len(pattern) % 4 == 0:
@@ -225,17 +260,40 @@ def name_meter(pattern):
             if len(set(split)) == 1:
                 foot = split[0]
                 foot_name = metrical_feet_4[foot]
-                repetitions = len(pattern) // 4
+                repetitions = len(split)
+    # Finally, check for metres that are odd to see if they are slightly modified 2 syllable foot meters
+    if not foot:
+        if len(pattern) % 2 == 1:
+            trimmed_pattern1 = [pattern[i:i + 2] for i in range(1, len(pattern), 2)]
+            trimmed_pattern2 = [pattern[i:i + 2] for i in range(0, len(pattern) - 1, 2)]
+            if len(set(trimmed_pattern1)) == 1:
+                foot = trimmed_pattern1[0]
+                foot_names.append(metrical_feet_2[foot])
+                repetitions = len(trimmed_pattern1)
+            if len(set(trimmed_pattern2)) == 1:
+                foot = trimmed_pattern2[0]
+                foot_names.append(metrical_feet_2[foot])
+                repetitions = len(trimmed_pattern2)
+            if len(foot_names) == 1:
+                foot_name = foot_names[0]
     # Get a name
     if foot_name:
-        if repetitions < 20:
-            foot_adj = metrical_foot_adj[foot_name]
+        foot_adj = metrical_foot_adj[foot_name]
+        if repetitions < 30:
             meter = meter_names[repetitions - 1]
             return foot_adj + ' ' + meter
         else:
-            return 'unrecognized'
+            return foot_adj + ' meter'
+    elif foot_names:
+        foot_adjs = [metrical_foot_adj[name] for name in foot_names]
+        joined = ' or '.join(foot_adjs)
+        if repetitions < 30:
+            meter = meter_names[repetitions - 1]
+            return 'modified ' + joined + ' ' + meter
+        else:
+            return 'modified ' + joined + ' meter'
     else:
-        return 'unrecognized'
+        return 'unrecognized meter'
 
 
 def name_rhyme(rhyme):
