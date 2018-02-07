@@ -42,8 +42,6 @@ class Line:
                     # Note: This mostly seems to occur in words that are ambigious w/o stress (present)
                     # If there are multiple (unique) stress patterns, currently uses the first one.
                     elif len(set(self.parent.words[word].stresses)) > 1:
-                        print(word)
-                        print(self.parent.words[word].stresses)
                         self.scansion.append(self.parent.words[word].stresses[0].replace('2', '0'))
                     # Put in a question mark if we have no stress pattern
                     else:
