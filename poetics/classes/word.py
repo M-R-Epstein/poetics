@@ -21,6 +21,7 @@ class Word:
         self.stressed_vowels = []
         self.stress_initial_consonants = []
         self.stress_final_consonants = []
+        self.stress_bracket_consonants = []
 
         self.pos = Counter()
         self.wordnet_pos = Counter()
@@ -48,7 +49,8 @@ class Word:
                     self.stresses.append(stress)
 
                 (self.p_rhymes, self.word_init_consonants, self.stressed_vowels, self.stress_initial_consonants,
-                 self.stress_final_consonants) = get_rhymes(self.pronunciations, self.syl_pronunciations)
+                 self.stress_final_consonants, self.stress_bracket_consonants) = get_rhymes(self.pronunciations,
+                                                                                            self.syl_pronunciations)
 
 
 # Places (lists of) synsets in self.synsets under their pos key
