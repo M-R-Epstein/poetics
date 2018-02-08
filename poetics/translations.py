@@ -99,6 +99,7 @@ def get_rhymes(pronunciations, syl_pronunciations):
     stressed_vowels = []
     stress_initial_consonants = []
     stress_final_consonants = []
+    stress_bracket_consonants = []
 
     # Obtains word-initial consonant sounds,
     # Note: Currently words without stress are ignored for stress-relative features.
@@ -136,14 +137,19 @@ def get_rhymes(pronunciations, syl_pronunciations):
         if first_stress:
             p_rhymes.append(first_stress.group(0))
 
+    # As long as we have a nonzero number of initials, and the same number of finals
+    if stress_initial_consonants and len(stress_initial_consonants) == len(stress_final_consonants):
+        for index, consonant in enumerate(stress_initial_consonants):
+            stress_bracket_consonants.append(consonant + ' ' + stress_final_consonants[index])
+
     # Set and back to remove duplicates
     p_rhymes = list(set(p_rhymes))
     word_init_consonants = list(set(word_init_consonants))
     stressed_vowels = list(set(stressed_vowels))
     stress_initial_consonants = list(set(stress_initial_consonants))
-    stress_final_consonants = list(set(stress_final_consonants))
+    stress_bracket_consonants = list(set(stress_bracket_consonants))
 
-    return p_rhymes, word_init_consonants, stressed_vowels, stress_initial_consonants, stress_final_consonants
+    return p_rhymes, word_init_consonants, stressed_vowels, stress_initial_consonants, stress_bracket_consonants
 
 
 # Converts parts of speech tags from tagger to those used by wordnet. Returns None if not relevant
