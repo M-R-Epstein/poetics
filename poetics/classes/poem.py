@@ -19,8 +19,11 @@ class Poem:
 
         self.title = title
         self.author = author
+
         self.lines = []
         self.line_indexes = []
+        self.avg_words_per_line = 0
+
         self.sentences = []
         self.words = {}
         self.wordlist = []
@@ -40,7 +43,7 @@ class Poem:
         self.simple_pos_count = Counter()
 
         # Note: May need some concept of stanzas at some point
-        # Loop through lines of the text checking to see if any of them have a pronunciation provided
+        # Loop through lines of the text checking to see if any of them have a pronunciation provided.
         for index, line in enumerate(text):
             found_pronunciations = re.findall("[\w\']+{[A-Z0-9\s-]+}", line)
             for pronunciation in found_pronunciations:
@@ -48,24 +51,30 @@ class Poem:
                 pronunciation = [split[1].replace('}', '')]
                 self.provided_pronunciations[split[0]] = pronunciation
             if found_pronunciations:
-                text[index] = re.sub("{[A-Z0-9\s]+}", "", text[index])
+                text[index] = re.sub("{[A-Z0-9\s-]+}", "", text[index])
 
-        # Creates sentence objects for each sentence.
+        # Creates fully joined text.
         joined_text = re.sub('\n', '', ' '.join(text))
-        tokenized_sentences = []
-        # Uses NLTK tokenizer to split into sentences (it deals with abbreviations and such)
+        # Uses NLTK tokenizer to split into sentences (it deals with abbreviations and such).
         nltk_sentences = tokenize.sent_tokenize(joined_text)
-        # Then splits again on colons/semi-colons/exclamation points/question marks
+        # Then splits again on colons/semi-colons/exclamation points/question marks.
+        tokenized_sentences = []
         for sentence in nltk_sentences:
             resplit = re.split('[;:]', sentence)
             tokenized_sentences.extend(resplit)
 
+        # Creates sentence objects for each sentence.
         for sentence in tokenized_sentences:
             self.sentences.append(Sentence(sentence, self))
 
         # Creates Line objects for each line
         for line in text:
             self.lines.append(Line(line, self))
+
+        # Comrehension to get a list of the number of words per line. Ignores lines without any tokenized text.
+        line_lengths = [len(line.tokenized_text) for line in self.lines if line.tokenized_text]
+        # Averages the words per line, and rounds the result.
+        self.avg_words_per_line = round(sum(line_lengths) / len(line_lengths))
 
         # Create word indexes for assigning calculations on the sentence level to calculations on the line level
         wordcount_lines = 0
@@ -100,11 +109,14 @@ class Poem:
         for word in self.words:
             if not self.words[word].pronunciations:
                 self.unrecognized_words.append(word)
-        # Logs unrecognized words if any were found
+        # Logs unrecognized words if any were found.
         if len(self.unrecognized_words) > 0:
             logging.warning("Unrecognized words: %s", ", ".join(self.unrecognized_words))
 
     def get_rhymes(self):
+        # TODO: Check consonance/assonance on the line level. If the number of unique
+        # TODO: "assonance rhymes" is below a certain threshold (say, 1/2 the lines in the poem) then report
+
         from poetics.utilities import name_rhyme
         # If we don't have a rhyming scheme, figure one out
         if not self.rhyme_scheme:
@@ -119,7 +131,7 @@ class Poem:
                     rhyme_counts[line.rhyme_candidates[0]] += 1
                     line.rhyme = line.rhyme_candidates[0]
 
-            # Handles lines with multiple rhyme candidates
+            # Handling for lines with multiple rhyme candidates.
             multi_rhyme_lines = [line for line in self.lines if len(line.rhyme_candidates) > 1]
             rhyme_counts_mult = Counter()
             # If we have multi-rhyme lines, then create a counter for their rhyme options.
@@ -134,10 +146,10 @@ class Poem:
                 for candidate in line.rhyme_candidates:
                     appearance_count.append(rhyme_counts[candidate])
                     appearance_count_mult.append(rhyme_counts_mult[candidate])
-                # If we have a rhyme match to resolved lines, pick the one that matches the most lines
+                # If we have a rhyme match to resolved lines, pick the one that matches the most lines.
                 if max(appearance_count) > 1:
                     line.rhyme = line.rhyme_candidates[appearance_count.index(max(appearance_count))]
-                # If not, pick a rhyme based on how many unresolved lines it matches with (if any)
+                # If not, pick a rhyme based on how many unresolved lines it matches with (if any).
                 else:
                     line.rhyme = line.rhyme_candidates[appearance_count_mult.index(max(appearance_count_mult))]
 
@@ -166,12 +178,13 @@ class Poem:
             for sentence in self.sentences:
                 sentence.get_rhymes()
 
-        # Get the rhyming scheme name, return it
+        # Get the rhyming scheme name.
         scheme_name = name_rhyme(self.rhyme_scheme)
 
         logging.info("Rhyming Scheme: %s", self.rhyme_scheme)
         if scheme_name:
             logging.info("Apparent form: %s", scheme_name)
+        # Log sentence level rhyme features.
         for sentence in self.sentences:
             sentence.print_rhyme()
         return self.rhyme_scheme
