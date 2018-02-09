@@ -1,6 +1,7 @@
 # Components that don't need updating
 poems/
 *.csv
+example.py
 
 # Misc
 poetics/scratch.py
