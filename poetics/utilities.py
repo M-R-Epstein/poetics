@@ -374,3 +374,23 @@ def process_poems(directory=poem_directory, outputfile='output.csv'):
             poem.get_meter()
             poem.get_pos()
             poem.record(outputfile)
+
+
+# Returns max-length groups of integers, of min_length or longer, where each consecutive integer in a group no more
+# than distance apart.
+def get_distance_groups(num_list, distance, min_length=1):
+    group = []
+    for index, num in enumerate(num_list):
+        # If group is currently empty or the last number in group is within distance of num, append num to group.
+        if not group or num - group[-1] <= distance:
+            group.append(num)
+            # If we're not on the last number in the list, then we move to the next one.
+            # This check necessary because otherwise the last group will never be yielded.
+            if index < len(num_list) - 1:
+                continue
+        # If we aren't within distance and group isn't empty (and so we never hit continue) then we yield group if
+        # group is at least the minimum number of items long.
+        if len(group) >= min_length:
+            yield group
+        # Then we take the current num, and put it in group alone for the next iteration.
+        group = [num]
