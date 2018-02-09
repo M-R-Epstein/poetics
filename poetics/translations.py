@@ -23,7 +23,7 @@ def syllable_dict(word):
     if word in syllables_dict:
         return syllables_dict[word]
     else:
-        logging.warning('Could not retrieve syllabified form of %s', word)
+        logging.warning('Could not retrieve syllabified form of "%s"', word)
         return []
 
 
