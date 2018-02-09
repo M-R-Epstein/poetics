@@ -106,7 +106,8 @@ def get_rhymes(pronunciations, syl_pronunciations):
     for pronunciation in syl_pronunciations:
         stressed_syllable = ''
 
-        match = re.search('^[\w\s]+(?=[a-zA-Z]{2}[0-2])', pronunciation)
+        match = re.search('^[\w]{1,2}(?=[\w\s]+[a-zA-Z]{2}[0-2])', pronunciation)
+        # Old search for all init consonants: match = re.search('^[\w\s]+(?=[a-zA-Z]{2}[0-2])', pronunciation)
         if match:
             word_init_consonants.append(match.group(0).strip())
 
@@ -118,13 +119,17 @@ def get_rhymes(pronunciations, syl_pronunciations):
         if match:
             stressed_vowels.append(match.group(0).strip())
 
-        match = re.search("[\w\s]+(?=[a-zA-Z]{2}1)", stressed_syllable)
+        match = re.search("[\w]{1,2}(?=[\w\s]+[a-zA-Z]{2}1)", stressed_syllable)
+        # Old search for all init consonants: match = re.search("[\w\s]+(?=[a-zA-Z]{2}1)", stressed_syllable)
         if match:
             stress_initial_consonants.append(match.group(0).strip())
 
         match = re.search("(?<=[a-zA-Z]{2}1)[\w\s]+", stressed_syllable)
         if match:
-            stress_final_consonants.append(match.group(0).strip())
+            # Split is necessary to get only the last sound because you can't use repetition in Lookbehinds.
+            # Without split, we get all consonants after the vowel in the stressed syllable.
+            split = match.group(0).split(' ')
+            stress_final_consonants.append(split[-1].strip())
 
     # Iterates through the pronunciations provided to extract perfect rhymes
     for index, pronunciation in enumerate(pronunciations):
@@ -147,9 +152,11 @@ def get_rhymes(pronunciations, syl_pronunciations):
     word_init_consonants = list(set(word_init_consonants))
     stressed_vowels = list(set(stressed_vowels))
     stress_initial_consonants = list(set(stress_initial_consonants))
+    stress_final_consonants = list(set(stress_final_consonants))
     stress_bracket_consonants = list(set(stress_bracket_consonants))
 
-    return p_rhymes, word_init_consonants, stressed_vowels, stress_initial_consonants, stress_bracket_consonants
+    return (p_rhymes, word_init_consonants, stressed_vowels, stress_initial_consonants, stress_final_consonants,
+            stress_bracket_consonants)
 
 
 # Converts parts of speech tags from tagger to those used by wordnet. Returns None if not relevant
