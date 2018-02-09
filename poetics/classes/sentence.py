@@ -55,7 +55,7 @@ class Sentence:
                            if key == s]
                 # Uses a generator function to get a list of the largest possible groups, of minimum length 2, of
                 # indexes where each consecutive index is within group_distance of the previous index .
-                grouped_indexes = [num for num in get_distance_groups(indexes, 5, group_distance)]
+                grouped_indexes = [num for num in get_distance_groups(indexes, group_distance, 2)]
                 # Append to output.
                 if grouped_indexes:
                     out.append((key, grouped_indexes))
@@ -111,7 +111,6 @@ class Sentence:
         stress_allit_out = get_printable_sound_sets(self.stressed_alliteration, self.tokenized_text)
         consonance_out = get_printable_sound_sets(self.consonance, self.tokenized_text)
         bracket_out = get_printable_sound_sets(self.bracket_consonance, self.tokenized_text)
-
         features = {'alliteration': allit_out,
                     'assonance': assonance_out,
                     'stressed alliteration': stress_allit_out,
