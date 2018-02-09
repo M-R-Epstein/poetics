@@ -1,5 +1,5 @@
 # Components that don't need updating
-poetics/poems/
+poems/
 *.csv
 
 # Misc
