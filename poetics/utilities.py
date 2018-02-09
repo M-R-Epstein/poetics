@@ -8,9 +8,9 @@ rhyme_patterns = {'AAA': 'Tercet', 'ABA': 'Tercet', 'AAAA': 'Tanaga', 'AABA': 'R
                   'AABCCD': 'Boy Named Sue', 'ABCBBB': 'The Raven Stanza', 'ABAABBA': 'Rondelet',
                   'ABABBCC': 'Rhyme Royal', 'ABABCBC': 'Canopus', 'AAABCCCB': 'Ochtfochlach',
                   'ABAAABAB': 'Rondeau or Triolet', 'ABABABCC': 'Ottava Rima', 'ABBACCAB': 'Coraline',
-                  'ABACADABA': 'Magic 9', 'ABABCDECDE': 'Keatsian Ode', 'ABBABAABBA': 'Chaucerian Roundel',
-                  'ABBAABBAABBAA': 'Ballata, Balete, Or Dansa', 'ABCABCDEFDEFD': 'Raconteur',
-                  'ABABBCBCCDCDEE': 'Spenserian Sonnet', 'ABABCDCDEFEFGG': 'Sonnet',
+                  'ABACADABA': 'Magic 9', 'ABABBCBCC': 'Spenserian Stanza', 'ABABCDECDE': 'Keatsian Ode',
+                  'ABBABAABBA': 'Chaucerian Roundel', 'ABBAABBAABBAA': 'Ballata, Balete, Or Dansa',
+                  'ABCABCDEFDEFD': 'Raconteur', 'ABABBCBCCDCDEE': 'Spenserian Sonnet', 'ABABCDCDEFEFGG': 'Sonnet',
                   'ABBAABBACDCDCD': 'Petrarchan Sonnet', 'ABBAABBACDECDE': 'Petrarchan Sonnet',
                   'AAABBCCCBBDDDBB': 'Triple Rebel Round', 'AABBBCCBBBDDBBB': 'Triple Rebel Round',
                   'AABABBCBCCDCDDDD': 'Stopping By Woods On A Snowy Evening Form', 'ABABCCCCDDEEFFFF': 'Flung',
@@ -137,7 +137,7 @@ def predict_scan(scans):
     predicted_scan = ''
     predicted_scan_single = ''
     if len(scans[0]) < 1:
-        return ''
+        return '', ''
     else:
         # Add the appropriate number of elements to track stress appearance by syllable
         # scan_counts_single separately tracks stress appearance for single syllable words
