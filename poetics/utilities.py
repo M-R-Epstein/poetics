@@ -44,81 +44,11 @@ meter_names = ['monometer', 'dimeter', 'trimeter', 'tetrameter', 'pentameter', '
                'heptacosameter', 'octacosameter', 'nonacosameter', 'triacontameter']
 
 
-# Writes a wordlist from CMUdict to text/wordlist.txt
-def write_cmu_wordlist():
-    import nltk
-    cmudict = nltk.corpus.cmudict
-
-    wordlist = cmudict.words()
-
-    with open('text/wordlist.txt', 'w') as file:
-        for index, items in enumerate(wordlist):
-            wordlist[index] = wordlist[index] + "\n"
-        file.writelines(wordlist)
-
-
-# Pulls out the words from frequencylist that are present in CMUDict and writes a sorted list to text/wordlistfreq.txt
-def write_cmu_wordlist_frequencies():
-    import nltk
-    import csv
-
-    cmudict = nltk.corpus.cmudict
-    wordlist = cmudict.words()
-
-    frequency_source = {}
-    frequency_list = {}
-    output = []
-
-    with open('text/frequencylist.txt') as data:
-        as_csv = csv.reader(data, delimiter='\t')
-        for row in as_csv:
-            frequency_source[row[0]] = row[1]
-
-    for word in wordlist:
-        if word in frequency_source:
-            frequency_list[word] = int(frequency_source[word])
-
-    # Create a sorted version of our dictionary
-    sort = [(k, frequency_list[k]) for k in sorted(frequency_list, key=frequency_list.get, reverse=True)]
-
-    # Prepare output lines
-    for item in sort:
-        output.append(item[0] + "\t" + str(item[1]) + "\n")
-
-    with open('text/wordlistfreq.txt', 'w') as file:
-        file.writelines(output)
-
-
-# Rewrites the syllable list from http://webdocs.cs.ualberta.ca/~kondrak/cmudict.html as json
-def write_syllable_list():
-    import re
-    import json
-    from collections import defaultdict
-
-    dictionary = defaultdict(list)
-
-    with open('text/syll_cmudict.json') as data:
-        read_data = data.readlines()
-
-    for line in read_data:
-        # Get rid of counts from original file.
-        subbed = re.sub("\(\d\)", '', line)
-        # Get rid of new lines, split
-        split = subbed.replace('\n', '').split('  ', 1)
-        # Lowercase entry name
-        lower = split[0].lower()
-        # Add pronunciations to dict
-        dictionary[lower].append(split[1])
-    # Write dict as json
-    with open('text/cmudict_syllables.json', 'w') as file:
-        json.dump(dictionary, file, sort_keys=True, indent=0, separators=(',', ':'))
-
-
 # Logs a scansion in a readable form
 def print_scansion(scansion, prefix=''):
     if prefix:
         prefix = prefix + ' '
-    # Business with index_mod is to handle line numbers while account for blanks
+    # Business with index_mod is to handle line numbers while accounting for blanks.
     index_mod = 1
     logging.info("%sScansion:", prefix)
     for index, scan in enumerate(scansion):
@@ -234,10 +164,9 @@ def name_meter(pattern):
     foot_name = None
     foot_names = []
     repetitions = None
-    # Don't bother for blank lines
+    # Don't bother for blank patterns
     if len(pattern) == 0:
         return None
-
     # Try to match a 2 syllable foot
     if len(pattern) % 2 == 0:
         split = [pattern[i:i + 2] for i in range(0, len(pattern), 2)]
