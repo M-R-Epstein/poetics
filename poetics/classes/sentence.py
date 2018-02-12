@@ -13,21 +13,6 @@ class Sentence:
 
         self.pos = []
 
-        self.word_init_consonants = []
-        self.alliteration = []
-
-        self.stressed_vowels = []
-        self.assonance = []
-
-        self.stress_init_consonants = []
-        self.stressed_alliteration = []
-
-        self.stress_final_consonants = []
-        self.consonance = []
-
-        self.stress_bracket_consonants = []
-        self.bracket_consonance = []
-
     def get_pos(self):
         # Attempts to match pos tags to word tokens.
         def match_pos_to_tokens(token_list, tag_list):
