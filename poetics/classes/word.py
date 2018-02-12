@@ -1,10 +1,10 @@
 import logging
-import nltk
-from poetics.translations import get_phonetic, get_rhymes
-from collections import Counter
 import re
+from collections import Counter
 
-cmudict = nltk.corpus.cmudict.dict()
+from nltk.corpus import wordnet
+
+from poetics.lookups import get_phonetic, get_rhymes
 
 
 class Word:
@@ -26,6 +26,7 @@ class Word:
         self.pos = Counter()
         self.wordnet_pos = Counter()
         self.synsets = {}
+
         # Get a pronunciation if the user hasn't provided one already.
         if self.syl_pronunciations:
             logging.info("Pronunciation for \"%s\" provided as \"%s\"", word, self.syl_pronunciations[0])
@@ -53,9 +54,8 @@ class Word:
                                                                                             self.syl_pronunciations)
 
 
-# Places (lists of) synsets in self.synsets under their pos key
+# Places (lists of) synsets in self.synsets under their pos key.
 def get_synsets(self):
-    from nltk.corpus import wordnet
     for pos in self.wordnet_pos:
         returned = wordnet.synsets(self.plaintext, pos=pos)
         # Note: Should probably try specifying no part of speech if we get no return. Depends on quality of tagger.

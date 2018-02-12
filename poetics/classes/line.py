@@ -1,5 +1,6 @@
-from poetics.translations import tokenize
 import re
+
+from poetics.conversions import tokenize
 
 
 class Line:
@@ -16,6 +17,18 @@ class Line:
 
         self.rhyme_candidates = []
         self.rhyme = None
+        self.asso_candidates = []
+        self.assonance = None
+        self.cons_candidates = []
+        self.consonance = None
+
+        # i_ as short for initial
+        self.i_rhyme_candidates = []
+        self.i_rhyme = None
+        self.i_asso_candidates = []
+        self.i_assonance = None
+        self.i_cons_candidates = []
+        self.i_consonance = None
 
         self.scansion = []
 
@@ -26,10 +39,29 @@ class Line:
             self.final_word = self.tokenized_text[-1]
 
     def get_rhymes(self):
-        if self.final_word and self.parent:
-            self.rhyme_candidates = self.parent.words[self.final_word].p_rhymes
-        else:
-            return False
+        # Note: initial assonance/consonance are not used for anything presently.
+        if self.parent:
+            if self.final_word:
+                self.rhyme_candidates = self.parent.words[self.final_word].p_rhymes
+                self.asso_candidates = self.parent.words[self.final_word].stressed_vowels
+                self.cons_candidates = self.parent.words[self.final_word].stress_final_consonants
+            if self.initial_word:
+                self.i_rhyme_candidates = self.parent.words[self.initial_word].p_rhymes
+                self.i_asso_candidates = self.parent.words[self.final_word].stressed_vowels
+                self.i_cons_candidates = self.parent.words[self.final_word].stress_final_consonants
+            # If there is only one candidate for any given feature, set the feature to that candidate.
+            if len(self.rhyme_candidates) == 1:
+                self.rhyme = self.rhyme_candidates[0]
+            if len(self.asso_candidates) == 1:
+                self.assonance = self.asso_candidates[0]
+            if len(self.cons_candidates) == 1:
+                self.consonance = self.cons_candidates[0]
+            if len(self.i_rhyme_candidates) == 1:
+                self.i_rhyme = self.i_rhyme_candidates[0]
+            if len(self.i_asso_candidates) == 1:
+                self.i_assonance = self.i_asso_candidates[0]
+            if len(self.i_cons_candidates) == 1:
+                self.i_consonance = self.i_cons_candidates[0]
 
     def get_scansion(self):
         if self.tokenized_text:
@@ -51,15 +83,3 @@ class Line:
             return self.scansion
         else:
             return ''
-
-    # DEPRECATED: Gets the parts of speech for tokenized line. Now done on sentence level.
-    # def get_pos(self):
-    #     if self.pos:
-    #         return self.pos
-    #     else:
-    #         if self.tokenized_text:
-    #             pos_list = nltk.pos_tag(self.tokenized_text)
-    #             for pos in pos_list:
-    #                 self.pos.append(pos[1])
-    #         else:
-    #             return False

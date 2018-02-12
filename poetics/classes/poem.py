@@ -1,17 +1,20 @@
+import csv
 import logging
-from poetics.classes.word import Word
-from poetics.classes.line import Line
-from poetics.classes.sentence import Sentence
+import re
 from collections import Counter
 from collections import OrderedDict
-import re
+
 from nltk import tokenize
 
-simple_pos = {'CC': 'CC', 'CD': 'DG', 'DT': 'DT', 'EX': 'V', 'FW': 'FW', 'IN': 'P', 'JJ': 'AJ', 'JJR': 'AJ',
-              'JJS': 'AJ', 'LS': 'LST', 'MD': 'V', 'NN': 'N', 'NNS': 'N', 'NNP': 'N', 'NNPS': 'N', 'PDT': 'DT',
-              'POS': 'PN', 'PRP': 'PN', 'PRP$': 'PN', 'RB': 'AV', 'RBR': 'AV', 'RBS': 'AV', 'RP': 'PRT', 'TO': 'V',
-              'UH': 'INT', 'VB': 'V', 'VBD': 'V', 'VBG': 'V', 'VBN': 'V', 'VBP': 'V', 'VBZ': 'V', 'WDT': 'DT',
-              'WP': 'PN', 'WP$': 'PN', 'WRB': 'AV'}
+from poetics import config as config
+from poetics.classes.line import Line
+from poetics.classes.sentence import Sentence
+from poetics.classes.stanza import Stanza
+from poetics.classes.word import Word
+from poetics.conversions import convert_pos
+from poetics.logging import print_scansion, tags_under_text
+from poetics.lookups import name_rhyme, name_meter
+from poetics.patterning import check_metres, predict_scan, resolve_rhyme, assign_letters_to_dict
 
 
 class Poem:
@@ -20,17 +23,23 @@ class Poem:
         self.title = title
         self.author = author
 
+        self.stanzas = []
+
         self.lines = []
         self.line_indexes = []
         self.avg_words_per_line = 0
 
         self.sentences = []
+
         self.words = {}
         self.wordlist = []
-
         self.unrecognized_words = []
         self.provided_pronunciations = {}
-        self.rhyme_scheme = ''
+
+        self.rhyme_scheme = None
+        self.asso_scheme = None
+        self.cons_scheme = None
+        self.i_rhyme_scheme = None
 
         self.direct_scansion = []
         self.joined_direct_scansion = []
@@ -53,59 +62,62 @@ class Poem:
             if found_pronunciations:
                 text[index] = re.sub("{[A-Z0-9\s-]+}", "", text[index])
 
-        # Creates fully joined text.
-        joined_text = re.sub('\n', '', ' '.join(text))
-        # Uses NLTK tokenizer to split into sentences (it deals with abbreviations and such).
-        nltk_sentences = tokenize.sent_tokenize(joined_text)
-        # Then splits again on colons/semi-colons/exclamation points/question marks.
-        tokenized_sentences = []
-        for sentence in nltk_sentences:
-            resplit = re.split('[;:]', sentence)
-            tokenized_sentences.extend(resplit)
-
-        # Creates sentence objects for each sentence.
-        for sentence in tokenized_sentences:
-            self.sentences.append(Sentence(sentence, self))
-
-        # Creates Line objects for each line
+        # Creates Line objects for each line.
         for line in text:
             self.lines.append(Line(line, self))
-
-        # Comrehension to get a list of the number of words per line. Ignores lines without any tokenized text.
+        # Create word indexes for passing information between lines/stanzas/sentences.
+        wordcount = 0
+        for line in self.lines:
+            # Tracks minimum bound for current line.
+            min_index = wordcount + 1
+            # Finds upper bound of line by adding the length of the current line to the existing wordcount.
+            wordcount += len(line.tokenized_text)
+            line.word_indexes = (min_index, wordcount)
+            self.line_indexes.append(line.word_indexes)
+        # Get a list of the number of words per line, ignoring lines without any tokenized text, and then an average.
         line_lengths = [len(line.tokenized_text) for line in self.lines if line.tokenized_text]
-        # Averages the words per line, and rounds the result.
         self.avg_words_per_line = round(sum(line_lengths) / len(line_lengths))
 
-        # Create word indexes for assigning calculations on the sentence level to calculations on the line level
-        wordcount_lines = 0
-        for line in self.lines:
-            min_index = wordcount_lines + 1
-            wordcount_lines += len(line.tokenized_text)
-            line.word_indexes = (min_index, wordcount_lines)
-            self.line_indexes.append(line.word_indexes)
+        # Splits full text into stanzas based on blank lines.
+        stanza_text = re.split('\n\s*[\n]+', ''.join(text))
+        # Creates Stanza objects for each stanza.
+        for stanza in stanza_text:
+            self.stanzas.append(Stanza(stanza, self))
+        # Create word indexes for passing information between lines/stanzas/sentences.
+        wordcount = 0
+        for stanza in self.stanzas:
+            min_index = wordcount + 1
+            wordcount += len(stanza.tokenized_text)
+            stanza.word_indexes = (min_index, wordcount)
 
-        # Create the same indexes for sentences
-        wordcount_sentences = 0
+        # Creates fully joined text w/o linebreaks.
+        joined_text = re.sub('\n', '', ' '.join(text))
+        # Uses NLTK tokenizer to split joined text into sentences.
+        sentence_text = tokenize.sent_tokenize(joined_text)
+        # Creates a Sentence object for each sentence.
+        for sentence in sentence_text:
+            self.sentences.append(Sentence(sentence, self))
+        # Create word indexes for passing information between lines/stanzas/sentences.
+        wordcount = 0
         for sentence in self.sentences:
-            min_index = wordcount_sentences + 1
-            wordcount_sentences += len(sentence.tokenized_text)
-            sentence.word_indexes = (min_index, wordcount_sentences)
+            min_index = wordcount + 1
+            wordcount += len(sentence.tokenized_text)
+            sentence.word_indexes = (min_index, wordcount)
 
         # List comprehension to pull out words from lines. Turns the list into a set and then back to remove duplicates.
         self.wordlist = list(set([
             self.lines[index].tokenized_text[index2] for index, line in enumerate(self.lines)
             if self.lines[index].tokenized_text
             for index2, word in enumerate(self.lines[index].tokenized_text)]))
-
         # Creates a dictionary of words for which the value corresponding to each word string (key) is the object
-        # representing that word with the poem as parent. Assigns pronunciation if one was provided.
+        # representing that word with the poem as parent. Assigns pronunciation if one was provided in the text.
         for word in self.wordlist:
             if word in self.provided_pronunciations:
                 self.words[word] = Word(word, self.provided_pronunciations[word], self)
             else:
                 self.words[word] = Word(word, parent=self)
 
-        # Iterates through the words to add any unrecognized words to unrecognized_words
+        # Find words that failed to find pronunciations during their init, add them to unrecognized_words.
         for word in self.words:
             if not self.words[word].pronunciations:
                 self.unrecognized_words.append(word)
@@ -114,83 +126,98 @@ class Poem:
             logging.warning("Unrecognized words: %s", ", ".join(self.unrecognized_words))
 
     def get_rhymes(self):
-        # TODO: Check consonance/assonance on the line level. If the number of unique
-        # TODO: "assonance rhymes" is below a certain threshold (say, 1/2 the lines in the poem) then report
+        # TODO: Check consonance/assonance on the line level (if number of rhymes is under 1/2 number of lines?)
+        # TODO: Headrhyme.
 
-        from poetics.utilities import name_rhyme
         # If we don't have a rhyming scheme, figure one out
         if not self.rhyme_scheme:
             # Get the rhyme candidates for each line
             for line in self.lines:
                 line.get_rhymes()
 
-            # Loop through lines with only one rhyme candidate, set them as that line's rhyme, and increment a counter
-            rhyme_counts = Counter()
-            for line in self.lines:
-                if len(line.rhyme_candidates) == 1:
-                    rhyme_counts[line.rhyme_candidates[0]] += 1
-                    line.rhyme = line.rhyme_candidates[0]
+            # List of rhymes with multiple rhyme candidates.
+            multi_feature_lines = [line for line in self.lines if len(line.rhyme_candidates) > 1]
+            # Then figure out the best rhymes for each.
+            for line in multi_feature_lines:
+                line.rhyme = resolve_rhyme(line.rhyme_candidates,
+                                           # Counter of the rhymes for lines that only had one candidate.
+                                           Counter([line.rhyme for line in self.lines if line.rhyme]),
+                                           # Counter of the appearances of rhymes in lines with multiple candidates.
+                                           Counter(c for line in multi_feature_lines for c in line.rhyme_candidates))
+            # Assonance.
+            multi_feature_lines = [line for line in self.lines if len(line.asso_candidates) > 1]
+            for line in multi_feature_lines:
+                line.assonance = resolve_rhyme(line.asso_candidates,
+                                               Counter([line.assonance for line in self.lines if line.assonance]),
+                                               Counter(c for line in multi_feature_lines for c in line.asso_candidates))
+            # Consonance
+            multi_feature_lines = [line for line in self.lines if len(line.cons_candidates) > 1]
+            for line in multi_feature_lines:
+                line.consonance = resolve_rhyme(line.con_candidates,
+                                                Counter([line.consonance for line in self.lines if line.consonance]),
+                                                Counter(
+                                                    c for line in multi_feature_lines for c in line.cons_candidates))
+            # Head rhyme
+            multi_feature_lines = [line for line in self.lines if len(line.i_rhyme_candidates) > 1]
+            for line in multi_feature_lines:
+                line.i_rhyme = resolve_rhyme(line.i_rhyme_candidates,
+                                             Counter([line.i_rhyme for line in self.lines if line.i_rhyme]),
+                                             Counter(
+                                                 c for line in multi_feature_lines for c in line.i_rhyme_candidates))
 
-            # Handling for lines with multiple rhyme candidates.
-            multi_rhyme_lines = [line for line in self.lines if len(line.rhyme_candidates) > 1]
-            rhyme_counts_mult = Counter()
-            # If we have multi-rhyme lines, then create a counter for their rhyme options.
-            for line in multi_rhyme_lines:
-                for candidate in line.rhyme_candidates:
-                    rhyme_counts_mult[candidate] += 1
+            # Creates ordered dicts of unique feature appearances.
+            rhyme_order = OrderedDict.fromkeys(line.rhyme for line in self.lines if line.rhyme)
+            asso_order = OrderedDict.fromkeys(line.assonance for line in self.lines if line.assonance)
+            cons_order = OrderedDict.fromkeys(line.consonance for line in self.lines if line.consonance)
+            i_rhyme_order = OrderedDict.fromkeys(line.i_rhyme for line in self.lines if line.i_rhyme)
 
-            for line in multi_rhyme_lines:
-                appearance_count = []
-                appearance_count_mult = []
-                # Create counts of the appearances of the candidate rhymes in resolved lines, and unresolved lines
-                for candidate in line.rhyme_candidates:
-                    appearance_count.append(rhyme_counts[candidate])
-                    appearance_count_mult.append(rhyme_counts_mult[candidate])
-                # If we have a rhyme match to resolved lines, pick the one that matches the most lines.
-                if max(appearance_count) > 1:
-                    line.rhyme = line.rhyme_candidates[appearance_count.index(max(appearance_count))]
-                # If not, pick a rhyme based on how many unresolved lines it matches with (if any).
-                else:
-                    line.rhyme = line.rhyme_candidates[appearance_count_mult.index(max(appearance_count_mult))]
+            # Uses half the number of lines +1 to set the max number of unique features for a feature to count as
+            # having some kind of pattern. So, for example, a 16 or 15 line poem would need no more than 8 rhymes.
+            max_sets = ((len(self.lines) // 2) + 1)
+            if not len(rhyme_order) > max_sets:
+                # Assigns letters to the ordered dicts.
+                rhyme_order = assign_letters_to_dict(rhyme_order)
+                # Sets rhyme scheme to the appropriate sequence of letters.
+                self.rhyme_scheme = ''.join([' ' if not line.rhyme else rhyme_order[line.rhyme] for line in self.lines])
+            if not len(asso_order) > max_sets:
+                asso_order = assign_letters_to_dict(asso_order)
+                self.asso_scheme = ''.join(
+                    [' ' if not line.assonance else asso_order[line.assonance] for line in self.lines])
+            if not len(cons_order) > max_sets:
+                cons_order = assign_letters_to_dict(cons_order)
+                self.cons_scheme = ''.join(
+                    [' ' if not line.consonance else cons_order[line.consonance] for line in self.lines])
+            if not len(i_rhyme_order) > max_sets:
+                i_rhyme_order = assign_letters_to_dict(i_rhyme_order)
+                self.i_rhyme_scheme = ''.join(
+                    [' ' if not line.i_rhyme else i_rhyme_order[line.i_rhyme] for line in self.lines])
+            # Has stanzas get their rhyme-like features.
+            for stanza in self.stanzas:
+                stanza.get_rhymes()
 
-            # Creates an ordered dictionary that stores the appearances of rhymes in the poem in order
-            rhyme_order = OrderedDict()
-            for line in self.lines:
-                if line.rhyme:
-                    rhyme_order[line.rhyme] = None
+        # Log the rhyming scheme if we have one.
+        if self.rhyme_scheme:
+            scheme_name = name_rhyme(self.rhyme_scheme)
+            logging.info("Rhyming Scheme: %s", self.rhyme_scheme)
+            if scheme_name:
+                logging.info("Apparent form: %s", scheme_name)
+        # Try assonance scheme and then consonance scheme if we didn't.
+        elif self.asso_scheme:
+            logging.info("Assonance Scheme: %s", self.asso_scheme)
+        elif self.cons_scheme:
+            logging.info("Consonance Scheme: %s", self.cons_scheme)
+        # Print line initial rhyme scheme if we got one.
+        if self.i_rhyme_scheme:
+            logging.info("Head Rhyming Scheme: %s", self.i_rhyme_scheme)
 
-            # Goes through the dictionary and assigns each rhyme a letter
-            rhyme_keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
-            for index, rhyme in enumerate(rhyme_order):
-                if index < 52:
-                    rhyme_order[rhyme] = rhyme_keys[index]
-                # If we somehow have more than 52 rhymes, starts using pairs of letters and so on
-                else:
-                    rhyme_order[rhyme] = rhyme_keys[index % 52] * ((index // 52) + 1)
+        # Have stanzas report their rhyme like features.
+        for index, stanza in enumerate(self.stanzas):
+            logging.info('Stanza %s:\n%s', index + 1, stanza.plaintext)
+            stanza.print_rhyme()
 
-            # Loop through our lines adding the appropriate key to our rhyme scheme. Add a space for rhymeless lines.
-            for index, line in enumerate(self.lines):
-                if self.lines[index].rhyme:
-                    self.rhyme_scheme += rhyme_order[self.lines[index].rhyme]
-                else:
-                    self.rhyme_scheme += ' '
-
-            for sentence in self.sentences:
-                sentence.get_rhymes()
-
-        # Get the rhyming scheme name.
-        scheme_name = name_rhyme(self.rhyme_scheme)
-
-        logging.info("Rhyming Scheme: %s", self.rhyme_scheme)
-        if scheme_name:
-            logging.info("Apparent form: %s", scheme_name)
-        # Log sentence level rhyme features.
-        for sentence in self.sentences:
-            sentence.print_rhyme()
         return self.rhyme_scheme
 
     def get_scansion(self):
-        from poetics.utilities import print_scansion, check_metres, predict_scan
 
         if not self.joined_scansion:
             # If we don't have a scansion calculated then request a scansion from each line
@@ -246,7 +273,6 @@ class Poem:
         return self.joined_scansion
 
     def get_meter(self):
-        from poetics.utilities import name_meter
         if not self.meters:
             for length, scans in self.scans.items():
                 if scans[2]:
@@ -262,7 +288,7 @@ class Poem:
         return self.meters
 
     def get_direct_scansion(self):
-        from poetics.utilities import print_scansion
+
         if not self.joined_scansion:
             self.get_scansion()
         print_scansion(self.joined_direct_scansion, 'Direct')
@@ -270,7 +296,7 @@ class Poem:
 
     # Gets parts of speech for sentences/lines/words
     def get_pos(self):
-        from poetics.translations import convert_pos
+
         # Have each sentence get parts of speech
         for sentence in self.sentences:
             sentence.get_pos()
@@ -301,46 +327,25 @@ class Poem:
                 self.pos_count[pos] += 1
         # Convert/save part of speech counts with simpler categories
         for pos in self.pos_count:
-            simple_name = simple_pos[pos]
+            simple_name = config.short_pos_dict[pos]
             self.simple_pos_count[simple_name] += self.pos_count.get(pos)
 
         logging.info("Parts of speech:")
-        # This is an overcomplicated way to center the POS tag under the words for printing (by adding spaces)
         for line in self.lines:
             if line.tokenized_text and line.pos:
                 simplified = []
-                line_out = ''
-                offset = 0
-                # Create a list of human-readable POS tags
+                # Create a list of simplied tags for each line.
                 for pos in line.pos:
-                    simplified.append(simple_pos[pos])
-                # Use a bunch of nonsense to center the tags under the words
-                for index, word in enumerate(line.tokenized_text):
-                    dif = len(line.tokenized_text[index]) - len(simplified[index])
-                    offdif = dif + offset
-                    if offdif > 0:
-                        # Puts spaces equal to half (rounded down) the difference between tag/word length before tag
-                        # Puts spaces equal to half (rounded up) the difference between tag/word length after tag
-                        line_out += (' ' * (offdif // 2)) \
-                                    + simplified[index] \
-                                    + (' ' * (offdif // 2 + (offdif % 2 > 0))) \
-                                    + ' '
-                        offset = 0
-                    else:
-                        line_out += simplified[index] + ' '
-                        # Offset is just keeping track of how far we are pushed to the right by tag length>word length
-                        offset += dif
-                # Output each line with the POS tags under it
-                logging.info(' '.join(line.tokenized_text))
-                logging.info(line_out)
+                    simplified.append(config.short_pos_dict[pos])
+                tags_under_text(line.tokenized_text, simplified)
 
     # Gets synsets for words
     def get_synsets(self):
         for word in self.words:
             self.words[word].get_synsets()
 
-    def record(self, outputfile='output.csv'):
-        import csv
+    def record(self, outputfile=config.output_file):
+
         field_headers = ['Title', 'Author', '# Lines', '# Words', 'Rhyme Scheme', 'Scansion', 'Meter', '# Noun',
                          '# Adj', '# Verb', '# Adv', '# Pron', '# Prep', '# Det']
         pos_out = ['NOUN', 'ADJ', 'VERB', 'ADV', 'PRON', 'PREP', 'DET']
