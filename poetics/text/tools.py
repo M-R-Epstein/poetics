@@ -1,7 +1,14 @@
+import csv
+import json
+
+from nltk.corpus import cmudict
+
+from poetics.text.syllabify.syllabifier import load_language, stringify, syllabify
+import poetics.config as config
+
+
 # Writes a wordlist from CMUdict to text/wordlist.txt
 def write_cmu_wordlist():
-    import nltk
-    cmudict = nltk.corpus.cmudict
 
     wordlist = cmudict.words()
 
@@ -13,10 +20,6 @@ def write_cmu_wordlist():
 
 # Pulls out the words from frequencylist that are present in CMUDict and writes a sorted list to text/wordlistfreq.txt
 def write_cmu_wordlist_frequencies():
-    import nltk
-    import csv
-
-    cmudict = nltk.corpus.cmudict
     wordlist = cmudict.words()
 
     frequency_source = {}
@@ -45,9 +48,6 @@ def write_cmu_wordlist_frequencies():
 
 # Syllabifies cmudict and writes it as cmudict_syllabified.json
 def syllabify_cmudict():
-    import json
-    from nltk.corpus import cmudict
-    from poetics.text.syllabify.syllabifier import load_language, stringify, syllabify
 
     def syllable_gen(entries):
         for entry, pronunciations in entries.items():
@@ -57,9 +57,15 @@ def syllabify_cmudict():
             yield (entry, pron_out)
 
     cmu_dict = cmudict.dict()
-    language = load_language("text/syllabify/english.cfg")
+    language = load_language(config.directory + "text/syllabify/english.cfg")
 
     syllabified_dict = {entry: pronunciations for entry, pronunciations in syllable_gen(cmu_dict)}
 
-    with open('text/cmudict_syllabified.json', 'w') as file:
+    with open(config.directory + '/text/cmudict_syllabified.json', 'w') as file:
         json.dump(syllabified_dict, file, sort_keys=True, separators=(',', ':'))
+
+
+def write_json_cmudict():
+    cmu_dict = cmudict.dict()
+    with open(config.directory + '/text/cmudict.json', 'w') as file:
+        json.dump(cmu_dict, file, sort_keys=True, separators=(',', ':'))
