@@ -1,9 +1,8 @@
 import re
 
-# Tokenizes text into individual words.
 from collections import Counter
 
-
+# Tokenizes text into individual words.
 def tokenize(line):
     tokenized = []
 
