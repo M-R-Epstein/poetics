@@ -41,11 +41,11 @@ def get_sound_set_groups(sound_list, tokenized_text, max_feature_distance):
     # Turn the sets of indexes into groups with a maximum distance between each consequitive member.
     for key, indexes in sound_set.items():
         groups = [num for num in get_distance_groups(indexes, max_feature_distance, 2)]
-        # Test to make sure that those indexes correspond to at least two unique words.
+        # Test to make sure that those index groups correspond to at least two unique words.
         for index, group in enumerate(groups):
-            words = [tokenized_text[index2] for index2 in group]
+            words = [tokenized_text[index2].lower() for index2 in group]
             if len(set(words)) < 2:
-                del (sound_set[key][index])
+                del(groups[index])
         # If any groups remain, add them to an output dictionary.
         if groups:
             output_dict[key] = groups
