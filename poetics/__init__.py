@@ -1,1 +1,1 @@
-from poetics.utilities import create_poem, process_poems
+from poetics.poetics import process_poems, create_poem
