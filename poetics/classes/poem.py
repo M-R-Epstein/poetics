@@ -126,9 +126,6 @@ class Poem:
             logging.warning("Unrecognized words: %s", ", ".join(self.unrecognized_words))
 
     def get_rhymes(self):
-        # TODO: Check consonance/assonance on the line level (if number of rhymes is under 1/2 number of lines?)
-        # TODO: Headrhyme.
-
         # If we don't have a rhyming scheme, figure one out
         if not self.rhyme_scheme:
             # Get the rhyme candidates for each line
