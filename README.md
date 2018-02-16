@@ -52,20 +52,14 @@ Batch processes a directory full of poems. Default directory is /poems.
 
 ## Usage
 ```python
-import coloredlogs
-import sys
 import poetics
 
-coloredlogs.install(level='INFO', fmt='%(asctime)s: %(message)s', datefmt='%H:%M:%S', stream=sys.stdout)
-
 # Single Poem operations.
-poem = poetics.create_poem('when my light is spent-john milton.txt')
-poem.get_rhyming_scheme()
-poem.get_scansion()
-poem.get_direct_scansion()
-poem.get_meter()
+poem = poetics.poetics.create_poem('when my light is spent-john milton.txt')
+poem.get_rhymes()
 poem.get_pos()
-poem.get_synsets()
+poem.get_scansion()
+poem.get_meter()
 poem.record()
 
 # Batch operations.
