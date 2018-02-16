@@ -17,22 +17,17 @@ Makes a poem object. File should be a text file with a poem in it.  Default dire
 ```python
  get_rhymes()
 ``` 
->Detects rhymes and rhyming scheme, and attempts to identify rhyming scheme. Returns rhyming scheme.  
+>Detects rhymes and rhyming scheme, and attempts to identify rhyming scheme.
 
 ```python
 get_scansion()  
 ```
->Calculates a best-guess at the poem's scansion. Returns scansion.  
-
-```python
-get_direct_scansion()
-```
->Provides scansion directly from cmudict pronunciations. Returns scansion.  
+>Calculates a best-guess at the poem's scansion.
 
 ```python
 get_meter()
 ```  
-> Attempts to identify meter. Returns name of meter.  
+> Attempts to identify meter.
 
 ```python
 get_pos()
