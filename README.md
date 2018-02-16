@@ -1,12 +1,12 @@
 # poetics
 ## Requirements
-coloredlogs==8.0 (optional)  
+coloredlogs==8.0  
 nltk==3.2.5  
-nltk corpora: cmudict, wordnet, words   
+nltk corpora: cmudict, wordnet, words  
 pyenchant==2.0.0  
-python-Levenshtein==0.12.0
-spacy>=2.0.0,<3.0.0
-# model: en_core_web_sm
+python-Levenshtein==0.12.0  
+spacy==>2.0.0,<3.0.0  
+model: en_core_web_sm  
 ## Info
 ### create_poem()
 ```python 
