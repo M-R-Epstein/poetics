@@ -1,11 +1,16 @@
+import logging
 import re
 
+import poetics.config as config
 from poetics.conversions import tokenize
+
+from itertools import product
 
 
 class Line:
     def __init__(self, text, parent=None):
         self.parent = parent
+        self.line_num = None
         self.plaintext = text
         self.tokenized_text = []
         self.word_indexes = ()
@@ -31,6 +36,11 @@ class Line:
         self.i_consonance = None
 
         self.scansion = []
+        self.final_scansion = []
+        self.stress = []
+        self.syllables = 0
+        self.syllables_base = 0
+        self.multi_length = False
 
         # Don't bother tokenizing or finding first/last words if there aren't any letters in the plaintext
         if re.search('[a-zA-Z]', self.plaintext):
@@ -63,23 +73,86 @@ class Line:
             if len(self.i_cons_candidates) == 1:
                 self.i_consonance = self.i_cons_candidates[0]
 
+    # Gets stress patterns for all tokenized words in line.
+    def get_stress(self):
+        if not self.pos:
+            logging.error("Parts of speech required for scansion.")
+            logging.error("Generating parts of speech.")
+            self.parent.get_pos()
+        for index, word in enumerate(self.tokenized_text):
+            self.stress.append(self.parent.words[word].stresses)
+
+    # Gets the number of syllables in the line, noting if there are multiple possible syllable lengths.
+    def get_length(self):
+        syllables = 0
+        for index, stress in enumerate(self.stress):
+            syll_lengths = [len(stress) for stress in self.stress[index]]
+            # If all stress patterns indicate the same number of syllables, add it to our count.
+            if max(syll_lengths) == min(syll_lengths):
+                syllables += syll_lengths[0]
+            # Otherwise, don't add it to our count, and set multi_length to indicate the line has variable length.
+            else:
+                self.multi_length = True
+        # If the line isn't marked on variable length, then its final syllable count is what we counted.
+        if not self.multi_length:
+            self.syllables = syllables
+        # If not, what we counted is the base syllable length not accounting for words that might vary.
+        else:
+            self.syllables_base = syllables
+
+    # Resolves stresses and syllable counts for lines that had multiple length possibilities.
+    def set_length(self, length_count):
+        multi_length_words = []
+        for index, stress in enumerate(self.stress):
+            syll_lengths = [len(stress) for stress in self.stress[index]]
+            if not max(syll_lengths) == min(syll_lengths):
+                multi_length_words.append((index, syll_lengths))
+        # If there's only one multi-length word, combinations is just the lengths of that word.
+        if len(multi_length_words) == 1:
+            combinations = [[length] for key, lengths in multi_length_words for length in lengths]
+        # Otherwise, create a list of all possible combinations of stress lengths in the line.
+        else:
+            combinations = [pros for pros in product(*[lengths for key, lengths in multi_length_words])]
+        # Loop through our most likely line lengths and gets matches.
+        matches = []
+        for length, count in length_count:
+            matches = [combination for combination in combinations if sum(combination, self.syllables_base) == length]
+            if matches:
+                break
+        # If we got no matches, then we use the first stress length for each multi-length word.
+        if not matches:
+            for index, (word_index, stresses) in enumerate(multi_length_words):
+                self.stress[word_index] = [stress for stress in self.stress[word_index]
+                                           if len(stress) == len(self.stress[word_index][0])]
+        # If we got a match, then get rid of stress patterns that are the wrong length for each word.
+        # Note: currently uses the first combination if we get multiple possibile combinations.
+        else:
+            for index, (word_index, stresses) in enumerate(multi_length_words):
+                self.stress[word_index] = [stress for stress in self.stress[word_index]
+                                           if len(stress) == matches[0][index]]
+        # Set the line length.
+        for key, lengths in multi_length_words:
+            self.syllables += len(self.stress[key][0])
+        self.syllables += self.syllables_base
+
     def get_scansion(self):
-        if self.tokenized_text:
-            for word in self.tokenized_text:
-                # If there is only one (unique) stress pattern, then use that.
-                if self.parent.words[word].stresses:
-                    if len(set(self.parent.words[word].stresses)) == 1:
-                        self.scansion.append(self.parent.words[word].stresses[0].replace('2', '0'))
-                    # Note: May want a better solution for words with multiple possible stress patterns.
-                    # Note: This mostly seems to occur in words that are ambigious w/o stress (present)
-                    # If there are multiple (unique) stress patterns, currently uses the first one.
-                    elif len(set(self.parent.words[word].stresses)) > 1:
-                        self.scansion.append(self.parent.words[word].stresses[0].replace('2', '0'))
-                    # Put in a question mark if we have no stress pattern
+        if self.stress:
+            for index, stress in enumerate(self.stress):
+                if len(stress[0]) == 1:
+                    # Sets the stress of the word as unstressed (0) if it's in the unstressed override list.
+                    if self.tokenized_text[index] in config.unstressed_words:
+                        self.stress[index] = ['U']
+                    # Set as stressed (1) if its part of speech is in the stress tendency list.
+                    elif self.pos[index] in config.stress_pos:
+                        self.stress[index] = ['S']
+                    # If the word's part of speech is in the weak stress tendency list, then set it as W.
+                    elif self.pos[index] in config.weak_stress_pos:
+                        self.stress[index] = ['W']
+                    # If the word's part of speech  is in the neutral stress tendency list, then set it as N.
+                    elif self.pos[index] in config.neutral_stress_pos:
+                        self.stress[index] = ['N']
+                    # Otherwise, set as unstressed.
                     else:
-                        self.scansion.append('?')
-                else:
-                    self.scansion.append('?')
-            return self.scansion
+                        self.stress[index] = ['U']
         else:
             return ''
