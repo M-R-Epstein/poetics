@@ -12,9 +12,9 @@ from poetics.classes.sentence import Sentence
 from poetics.classes.stanza import Stanza
 from poetics.classes.word import Word
 from poetics.conversions import convert_pos
-from poetics.logging import print_scansion, tags_under_text
+from poetics.logging import tags_with_text, convert_scansion
 from poetics.lookups import name_rhyme, name_meter
-from poetics.patterning import check_metres, predict_scan, resolve_rhyme, assign_letters_to_dict
+from poetics.patterning import check_meters, predict_scan, resolve_rhyme, assign_letters_to_dict, pattern_match_ratio
 
 
 class Poem:
@@ -41,17 +41,14 @@ class Poem:
         self.cons_scheme = None
         self.i_rhyme_scheme = None
 
-        self.direct_scansion = []
-        self.joined_direct_scansion = []
-        self.joined_scansion = []
-        self.sorted_scansion = {}
+        self.lines_by_syllable = {}
         self.scans = {}
+        self.scansion = []
         self.meters = []
 
         self.pos_count = Counter()
         self.simple_pos_count = Counter()
 
-        # Note: May need some concept of stanzas at some point
         # Loop through lines of the text checking to see if any of them have a pronunciation provided.
         for index, line in enumerate(text):
             found_pronunciations = re.findall("[\w\']+{[A-Z0-9\s-]+}", line)
@@ -63,15 +60,21 @@ class Poem:
                 text[index] = re.sub("{[A-Z0-9\s-]+}", "", text[index])
 
         # Creates Line objects for each line.
-        for line in text:
+        for index, line in enumerate(text):
             self.lines.append(Line(line, self))
-        # Create word indexes for passing information between lines/stanzas/sentences.
+        # Create word indexes for passing information between lines/stanzas/sentences, also assigns line numbers.
         wordcount = 0
-        for line in self.lines:
+        index_mod = 1
+        for index, line in enumerate(self.lines):
+            length = len(line.tokenized_text)
+            if length == 0:
+                index_mod -= 1
+            else:
+                line.line_num = index + index_mod
             # Tracks minimum bound for current line.
             min_index = wordcount + 1
             # Finds upper bound of line by adding the length of the current line to the existing wordcount.
-            wordcount += len(line.tokenized_text)
+            wordcount += length
             line.word_indexes = (min_index, wordcount)
             self.line_indexes.append(line.word_indexes)
         # Get a list of the number of words per line, ignoring lines without any tokenized text, and then an average.
@@ -212,84 +215,105 @@ class Poem:
             logging.info('Stanza %s:\n%s', index + 1, stanza.plaintext)
             stanza.print_rhyme()
 
-        return self.rhyme_scheme
-
     def get_scansion(self):
+        if not self.scansion:
+            # Have all lines get their length.
+            for index, line in enumerate(self.lines):
+                if line.tokenized_text:
+                    line.get_stress()
+                    line.get_length()
+                    # Sort lines by syllable count for lines that don't have multiple possible lengths.
+                    if not line.multi_length:
+                        length = line.syllables
+                        if length in self.lines_by_syllable:
+                            self.lines_by_syllable[length].append(index)
+                        else:
+                            self.lines_by_syllable[length] = []
+                            self.lines_by_syllable[length].append(index)
+            # Have lines with multiple possible lengths resolve their length.
+            line_len_count = sorted([(key, len(indexes)) for key, indexes in self.lines_by_syllable.items()],
+                                    key=lambda tup: tup[1], reverse=True)
+            for index, line in enumerate(self.lines):
+                if line.multi_length:
+                    line.set_length(line_len_count)
+                    # Add the newly resolved multi length line to lines_by_syllable.
+                    length = line.syllables
+                    if length in self.lines_by_syllable:
+                        self.lines_by_syllable[length].append(index)
+                    else:
+                        self.lines_by_syllable[length] = []
+                        self.lines_by_syllable[length].append(index)
 
-        if not self.joined_scansion:
-            # If we don't have a scansion calculated then request a scansion from each line
+            # Have each line get a scansion.
             for line in self.lines:
-                self.direct_scansion.append(line.get_scansion())
-            # Make a version of scansion where each line is a string instead of a list of word stresses
-            for index, line in enumerate(self.direct_scansion):
-                self.joined_scansion.append(''.join(self.direct_scansion[index]))
+                if line.tokenized_text:
+                    line.get_scansion()
 
-            # Store a direct scansion before we do anything with it
-            self.joined_direct_scansion = list(self.joined_scansion)
+            for key, indexes in self.lines_by_syllable.items():
+                scans = [self.lines[index].stress for index in indexes]
+                predicted, predicted_single = predict_scan(key, scans)
+                predicted_merged, best_match = check_meters(key, predicted, predicted_single)
+                self.scans[key] = (predicted, predicted_single, predicted_merged, best_match)
 
-            # Make a dictionary object that sorts lines into groups by their scan length
-            for index, scan in enumerate(self.joined_scansion):
-                length = len(scan)
-                if length in self.sorted_scansion:
-                    self.sorted_scansion[length].append((index, scan))
-                else:
-                    self.sorted_scansion[length] = []
-                    self.sorted_scansion[length].append((index, scan))
-
-            # Create another similar dict of scan predictions and matches by length
-            for length, lines in self.sorted_scansion.items():
-                scans = [line[1] for line in lines]
-                predicted, merged = predict_scan(scans)
-                best_match = check_metres(predicted, merged)
-                self.scans[length] = (predicted, merged, best_match)
-
-            for length, scans in self.scans.items():
-                line_indexes = [entry[0] for entry in self.sorted_scansion[length]]
-                # If we found a well-matched metrical pattern for a given line length, we use it for 1 syllable words
-                if scans[2]:
-                    for index in line_indexes:
-                        final_scan = ''
-                        for index2, stress in enumerate(self.joined_scansion[index]):
-                            if int(stress) > 2:
-                                final_scan += scans[2][index2]
+            for line in self.lines:
+                if line.tokenized_text:
+                    line_scan = []
+                    position = 0
+                    pattern = self.scans[line.syllables][3]
+                    # If we have no best_match, we use predicted_merged.
+                    if not pattern:
+                        pattern = self.scans[line.syllables][2]
+                    # Loop through stresses in lines and add that stress to fin_scan.
+                    for stresses in line.stress:
+                        if len(stresses) > 1:
+                            ratios = []
+                            for stress in stresses:
+                                ratios.append(pattern_match_ratio(stress, pattern[position:position + len(stress)]))
+                            best_index = ratios.index(max(ratios))
+                            line_scan.append(stresses[best_index])
+                            position += len(stresses[best_index])
+                        else:
+                            if stresses[0] == 'S' or stresses[0] == 'W':
+                                if pattern[position] == 'X':
+                                    line_scan.append('1')
+                                    position += 1
+                                else:
+                                    line_scan.append(pattern[position])
+                                    position += 1
+                            # Note: words with neutral tendency resolve as unstressed if we have no pattern.
+                            elif stresses[0] == 'U' or stresses[0] == 'N':
+                                if pattern[position] == 'X':
+                                    line_scan.append('0')
+                                    position += 1
+                                else:
+                                    line_scan.append(pattern[position])
+                                    position += 1
                             else:
-                                final_scan += self.joined_scansion[index][index2]
-                        self.joined_scansion[index] = final_scan
-                # If we can't get a match, then just use the direct scansion.
-                else:
-                    for index in line_indexes:
-                        final_scan = ''
-                        for index2, stress in enumerate(self.joined_direct_scansion[index]):
-                            if int(stress) > 2:
-                                final_scan += str(int(stress) - 3)
-                            else:
-                                final_scan += stress
-                        self.joined_scansion[index] = final_scan
+                                line_scan.append(stresses[0])
+                                position += len(stresses[0])
+                    line.final_scansion = line_scan
 
-        print_scansion(self.joined_scansion)
-        return self.joined_scansion
+            # Log scansion.
+            logging.info("Scansion")
+            for line in self.lines:
+                if line.tokenized_text:
+                    tags_with_text(line.tokenized_text, convert_scansion(line.final_scansion), line.line_num, True)
+                else:
+                    logging.info('')
 
     def get_meter(self):
         if not self.meters:
             for length, scans in self.scans.items():
-                if scans[2]:
-                    self.meters.append((length, name_meter(scans[2])))
+                if scans[3]:
+                    self.meters.append((length, name_meter(scans[3])))
                 else:
-                    self.meters.append((length, name_meter(scans[0])))
+                    self.meters.append((length, name_meter(scans[2])))
         # Get sorted lists of non-zero length meter names that were recognized/not for logging
         meters = sorted([(length, name) for length, name in self.meters if length > 0])
         # Log 'em
         if meters:
             logging.info("Apparent meter(s): %s", ', '.join([name + ' (' + str(length) + ')'
                                                              for length, name in meters]))
-        return self.meters
-
-    def get_direct_scansion(self):
-
-        if not self.joined_scansion:
-            self.get_scansion()
-        print_scansion(self.joined_direct_scansion, 'Direct')
-        return self.joined_direct_scansion
 
     # Gets parts of speech for sentences/lines/words
     def get_pos(self):
@@ -334,13 +358,14 @@ class Poem:
                 # Create a list of simplied tags for each line.
                 for pos in line.pos:
                     simplified.append(config.short_pos_dict[pos])
-                tags_under_text(line.tokenized_text, simplified)
+                tags_with_text(line.tokenized_text, simplified, line.line_num)
 
     # Gets synsets for words
     def get_synsets(self):
         for word in self.words:
             self.words[word].get_synsets()
 
+    # TODO: currently ouputting scansion incorrectly.
     def record(self, outputfile=config.output_file):
 
         field_headers = ['Title', 'Author', '# Lines', '# Words', 'Rhyme Scheme', 'Scansion', 'Meter', '# Noun',
