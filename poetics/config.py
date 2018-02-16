@@ -54,12 +54,11 @@ metrical_feet_2 = {'00': 'pyrrhic', '01': 'iamb', '10': 'trochee', '11': 'sponde
 # Length 3 metrical foot dictionary.
 metrical_feet_3 = {'000': 'tribrach', '001': 'anapest', '010': 'amphibrach', '011': 'bacchius', '100': 'dactyl',
                    '101': 'cretic', '110': 'antibacchius', '111': 'molossus'}
-# Length 4 metrical foot dictionary.
-metrical_feet_4 = {'0000': 'tetrabrach', '1000': 'primus paeon', '0100': 'secundus paeon', '0010': 'tertius paeon',
-                   '0001': 'quartus paeon', '1100': 'double trochee', '0011': 'double iamb', '1010': 'ditrochee',
-                   '0101': 'diiamb', '1001': 'choriamb', '0110': 'antispast', '0111': 'first epitrite',
-                   '1011': 'second epitrite', '1101': 'third epitrite', '1110': 'fourth epitrite',
-                   '1111': 'dispondee'}
+# Length 4 metrical foot dictionary. Does not include feet that are simply a repeated length 2 foot.
+metrical_feet_4 = {'1000': 'primus paeon', '0100': 'secundus paeon', '0010': 'tertius paeon', '0001': 'quartus paeon',
+                   '1100': 'double trochee', '0011': 'double iamb', '1001': 'choriamb', '0110': 'antispast',
+                   '0111': 'first epitrite', '1011': 'second epitrite', '1101': 'third epitrite',
+                   '1110': 'fourth epitrite'}
 # Metrical foot adjective forms.
 metrical_foot_adj = {'pyrrhic': 'pyrrhic', 'iamb': 'iambic', 'trochee': 'trochaic', 'spondee': 'spondaic',
                      'tribrach': 'tribrachic', 'anapest': 'anapestic', 'amphibrach': 'amphibrachic',
@@ -77,6 +76,18 @@ meter_names = ['monometer', 'dimeter', 'trimeter', 'tetrameter', 'pentameter', '
                'pentadecameter', 'hexadecameter', 'heptadecameter', 'octadecameter', 'nonadecameter', 'icosameter',
                'henicosameter', 'docosameter', 'tricosameter', 'tetracosameter', 'pentacosameter', 'hexacosameter',
                'heptacosameter', 'octacosameter', 'nonacosameter', 'triacontameter']
+# Lists for determining stress estimation of single syllable words based on part of speech tag.
+# Stress tendency parts of speech tags. Verbs and nouns.
+stress_pos = ['BES', 'MD', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
+# Weak stress tendency parts of speech tags. Adjective and adverbs.
+weak_stress_pos = ['AFX', 'EX', 'HVS', 'JJ', 'JJR', 'JJS', 'PDT', 'RB', 'RBR', 'RBS', 'WRB']
+# Neutral stress tendency parts of speech tags. Pronouns.
+neutral_stress_pos = ['PRP', 'PRP$', 'WP', 'WP$']
+# All other parts of speech are treated as having an unstressed tendency.
+# These words are treated as unstressed tendency independent of part of speech tag.
+unstressed_words = ["a", "am", "an", "and", "are", "as", "but", "by", "can", "for", "if", "is", "it", "its", "it's",
+                    "may", "nor", "of", "or", "so", "such", "than", "the", "them", "there", "this", "those", "though",
+                    "to", "was", "were", "will", "with"]
 
 ########################################################################################################################
 # Loading
