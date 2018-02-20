@@ -143,20 +143,23 @@ def name_rhyme(rhyme):
 
 # Tries to name a meter based on metrical pattern.
 def name_meter(pattern):
+    classical_name = None
     foot = None
     foot_name = None
     foot_names = []
-    repetitions = None
+    repetition = None
     # Don't bother for blank patterns
     if len(pattern) == 0:
-        return None
+        return None, None
+    if pattern in config.classic_meters:
+        classical_name = config.classic_meters[pattern]
     # Try to match a 2 syllable foot
     if len(pattern) % 2 == 0:
         split = [pattern[i:i + 2] for i in range(0, len(pattern), 2)]
         if len(set(split)) == 1:
             foot = split[0]
             foot_name = config.metrical_feet_2[foot]
-            repetitions = len(split)
+            repetition = len(split)
     # Try to match a 3 syllable foot if no 2 syllable feet matched
     if not foot:
         if len(pattern) % 3 == 0:
@@ -164,7 +167,7 @@ def name_meter(pattern):
             if len(set(split)) == 1:
                 foot = split[0]
                 foot_name = config.metrical_feet_3[foot]
-                repetitions = len(split)
+                repetition = len(split)
     # Try to match a 4 syllable foot if no 2 or 3 syllable feet matched
     if not foot:
         if len(pattern) % 4 == 0:
@@ -172,37 +175,63 @@ def name_meter(pattern):
             if len(set(split)) == 1:
                 foot = split[0]
                 foot_name = config.metrical_feet_4[foot]
-                repetitions = len(split)
+                repetition = len(split)
     # Finally, check for metres that are odd to see if they are slightly modified 2 syllable foot meters
+    # Note: may want to modify this to account for pyrrhic or spondaic meters.
     if not foot:
         if len(pattern) % 2 == 1:
             trimmed_pattern1 = [pattern[i:i + 2] for i in range(1, len(pattern), 2)]
             trimmed_pattern2 = [pattern[i:i + 2] for i in range(0, len(pattern) - 1, 2)]
             if len(set(trimmed_pattern1)) == 1:
                 foot = trimmed_pattern1[0]
-                foot_names.append(config.metrical_feet_2[foot])
-                repetitions = len(trimmed_pattern1)
+                foot_names.append((config.metrical_feet_2[foot], 'headless'))
+                repetition = len(trimmed_pattern1) + 1
             if len(set(trimmed_pattern2)) == 1:
                 foot = trimmed_pattern2[0]
-                foot_names.append(config.metrical_feet_2[foot])
-                repetitions = len(trimmed_pattern2)
+                foot_names.append((config.metrical_feet_2[foot], 'catalectic'))
+                repetition = len(trimmed_pattern2) + 1
             if len(foot_names) == 1:
                 foot_name = foot_names[0]
     # Get a name
-    if foot_name:
+    if classical_name:
+        return classical_name, None
+    elif foot_name:
         foot_adj = config.metrical_foot_adj[foot_name]
-        if repetitions < 30:
-            meter = config.meter_names[repetitions - 1]
-            return foot_adj + ' ' + meter
+        if repetition < 30:
+            repetition = config.meter_names[repetition - 1]
+            return foot_adj, repetition
         else:
-            return foot_adj + ' meter'
+            return foot_adj, 'meter'
     elif foot_names:
-        foot_adjs = [config.metrical_foot_adj[name] for name in foot_names]
-        joined = ' or '.join(foot_adjs)
-        if repetitions < 30:
-            meter = config.meter_names[repetitions - 1]
-            return 'modified ' + joined + ' ' + meter
+        foot_adjs = [(config.metrical_foot_adj[name], prefix) for name, prefix in foot_names]
+        if repetition < 30:
+            repetition = config.meter_names[repetition - 1]
+            joined = ' or '.join([prefix + ' ' + foot_adj for foot_adj, prefix in foot_adjs])
+            return joined, repetition
         else:
-            return 'modified ' + joined + ' meter'
+            joined = ' or '.join([prefix + ' ' + foot_adj for foot_adj, prefix in foot_adjs])
+            return joined, 'meter'
     else:
-        return 'unrecognized meter'
+        return 'unrecognized', 'meter'
+
+
+def name_stanza(rhyme_scheme, line_lengths, meters, line_count):
+    matches = []
+    # Make a list of forms that are an appropriate number of lines.
+    forms = [forms for forms in config.stanza_forms if forms[4] == line_count]
+    for form in forms:
+        # If the form has no rhyme requirement or the stanza's rhyme scheme matches.
+        if not form[1] or rhyme_scheme in form[1]:
+            # If the form has no line length requirements or we have a match.
+            if not form[2] or line_lengths in form[2]:
+                # If the form has no metrical requirement or we have a match.
+                if not form[3] or meters in form[3]:
+                    matches.append(form[0])
+    if not matches:
+        if 1 < line_count < 9:
+            matches.append('Unrecognized ' + config.stanza_length_names[line_count - 1])
+        elif line_count <= 100:
+            matches.append('Unrecognized ' + config.stanza_length_names[line_count - 1] + ' line stanza')
+        else:
+            matches.append('Unrecognized stanza')
+    return matches
