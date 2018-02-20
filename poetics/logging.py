@@ -2,6 +2,7 @@ import logging
 import re
 
 
+# Logs the provided string as a level 1 header.
 def header1(head):
     width = 50
     top = ('=' * width)
@@ -12,6 +13,7 @@ def header1(head):
     logging.info(bot)
 
 
+# Logs the provided string as a level 2 header.
 def header2(head):
     width = 50 - (len(head) + 2)
     left = '=' * (width // 2)
@@ -19,6 +21,7 @@ def header2(head):
     logging.info("%s %s %s", left, head, right)
 
 
+# Joins a list in proper grammatical fashion (with oxford comma).
 def join_list_proper(lst, term='and'):
     if len(lst) == 1:
         return lst[0]
@@ -28,6 +31,7 @@ def join_list_proper(lst, term='and'):
         return ', '.join(lst[0:-1]) + ', ' + term + ' ' + lst[-1]
 
 
+# Converts a scansion made up of 0's and 1's into a readable form.
 def convert_scansion(scansion):
     converted_scan = []
     for scan in scansion:
@@ -38,11 +42,12 @@ def convert_scansion(scansion):
 
 
 # Takes a list of tags and a list of tokenized words and attempts to align them in a readable form in the log.
+# If above = True, then the tags go above the text instead of under it.
 def tags_with_text(tokenized_text, tags, line_num=None, above=False):
     line_out = ''
     offset = 0
-    # Use a bunch of nonsense to center the tags under the words
     for index, word in enumerate(tokenized_text):
+        # the .count portion is to account for zero length characters (presently combining underline is the only one).
         dif = len(tokenized_text[index]) - (len(tags[index]) - tags[index].count('̲'))
         offdif = dif + offset
         if offdif > 0:
