@@ -72,6 +72,9 @@ def check_meters(length, predicted, predicted_single):
     # If our merged form is more than half 'X', then we don't have enough data to guess. Return ''.
     if x_count > length // 2:
         return predicted_merged, ''
+    for meter in config.classic_meters:
+        if length == len(meter):
+            foot_patterns.append(meter)
     # If the length of our scan is divisble by 2, add patterns for repeated 2 syllable feet
     if length % 2 == 0:
         for foot in config.metrical_feet_2:
@@ -107,8 +110,14 @@ def check_meters(length, predicted, predicted_single):
                 clean_pattern += pos
             if not predicted_single[index] == 'X':
                 clean_pattern_single += pos
-        predicted_ratios.append(pattern_match_ratio(clean_predicted, clean_pattern))
-        predicted_single_ratios.append(pattern_match_ratio(clean_predicted_single, clean_pattern_single))
+        if clean_predicted:
+            predicted_ratios.append(pattern_match_ratio(clean_predicted, clean_pattern))
+        else:
+            predicted_ratios.append(0)
+        if clean_predicted_single:
+            predicted_single_ratios.append(pattern_match_ratio(clean_predicted_single, clean_pattern_single))
+        else:
+            predicted_single_ratios.append(0)
     # Creates a weighted combination of predicted_ratios and predicted_single_ratios.
     weighted_ratios = []
     for i in range(0, len(predicted_ratios)):
@@ -159,7 +168,7 @@ def resolve_rhyme(candidates, rhyme_counts, rhyme_counts_mult):
         appearance_count.append(rhyme_counts[candidate])
         appearance_count_mult.append(rhyme_counts_mult[candidate])
     # If we have a rhyme match to resolved lines, pick the one that matches the most lines.
-    if max(appearance_count) > 1:
+    if max(appearance_count) >= 1:
         return candidates[appearance_count.index(max(appearance_count))]
     # If not, pick a rhyme based on how many unresolved lines it matches with (if any).
     else:
@@ -167,12 +176,14 @@ def resolve_rhyme(candidates, rhyme_counts, rhyme_counts_mult):
 
 
 # Assigns letters to features in an ordered dict.
-def assign_letters_to_dict(ordered_dict):
-    keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+def assign_letters_to_dict(ordered_dict, lower=False):
+    keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    if lower:
+        keys = 'abcdefghijklmnopqrstuvwxyz'
     for index, feature in enumerate(ordered_dict):
-        if index < 52:
+        if index < 26:
             ordered_dict[feature] = keys[index]
-        # If we somehow have more than 52 rhymes, starts using pairs of letters and so on
+        # If we have more than 26 rhymes, starts using pairs of letters and so on
         else:
-            ordered_dict[feature] = keys[index % 52] * ((index // 52) + 1)
+            ordered_dict[feature] = keys[index % 26] * ((index // 26) + 1)
     return ordered_dict

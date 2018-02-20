@@ -12,8 +12,8 @@ from poetics.classes.sentence import Sentence
 from poetics.classes.stanza import Stanza
 from poetics.classes.word import Word
 from poetics.conversions import convert_pos
-from poetics.logging import tags_with_text, convert_scansion
-from poetics.lookups import name_rhyme, name_meter
+from poetics.logging import tags_with_text, convert_scansion, header1, header2, join_list_proper
+from poetics.lookups import name_meter
 from poetics.patterning import check_meters, predict_scan, resolve_rhyme, assign_letters_to_dict, pattern_match_ratio
 
 
@@ -24,6 +24,7 @@ class Poem:
         self.author = author
 
         self.stanzas = []
+        self.stanza_indexes = []
 
         self.lines = []
         self.line_indexes = []
@@ -43,8 +44,7 @@ class Poem:
 
         self.lines_by_syllable = {}
         self.scans = {}
-        self.scansion = []
-        self.meters = []
+        self.meters = {}
 
         self.pos_count = Counter()
         self.simple_pos_count = Counter()
@@ -72,7 +72,10 @@ class Poem:
             else:
                 line.line_num = index + index_mod
             # Tracks minimum bound for current line.
-            min_index = wordcount + 1
+            if line.tokenized_text:
+                min_index = wordcount + 1
+            else:
+                min_index = wordcount
             # Finds upper bound of line by adding the length of the current line to the existing wordcount.
             wordcount += length
             line.word_indexes = (min_index, wordcount)
@@ -92,6 +95,11 @@ class Poem:
             min_index = wordcount + 1
             wordcount += len(stanza.tokenized_text)
             stanza.word_indexes = (min_index, wordcount)
+            self.stanza_indexes.append(stanza.word_indexes)
+            stanza.lines = [line for line in self.lines if
+                            stanza.word_indexes[0] <= line.word_indexes[0] < line.word_indexes[1] <=
+                            stanza.word_indexes[1]]
+            stanza.line_count = len(stanza.lines)
 
         # Creates fully joined text w/o linebreaks.
         joined_text = re.sub('\n', '', ' '.join(text))
@@ -137,7 +145,7 @@ class Poem:
 
             # List of rhymes with multiple rhyme candidates.
             multi_feature_lines = [line for line in self.lines if len(line.rhyme_candidates) > 1]
-            # Then figure out the best rhymes for each.
+            # Figure out the best rhymes for each line.
             for line in multi_feature_lines:
                 line.rhyme = resolve_rhyme(line.rhyme_candidates,
                                            # Counter of the rhymes for lines that only had one candidate.
@@ -165,25 +173,33 @@ class Poem:
                                              Counter(
                                                  c for line in multi_feature_lines for c in line.i_rhyme_candidates))
 
+            for stanza in self.stanzas:
+                stanza.get_rhymes()
+
             # Creates ordered dicts of unique feature appearances.
             rhyme_order = OrderedDict.fromkeys(line.rhyme for line in self.lines if line.rhyme)
             asso_order = OrderedDict.fromkeys(line.assonance for line in self.lines if line.assonance)
             cons_order = OrderedDict.fromkeys(line.consonance for line in self.lines if line.consonance)
             i_rhyme_order = OrderedDict.fromkeys(line.i_rhyme for line in self.lines if line.i_rhyme)
 
+            # Check if all of the lines have consonance.
+            missing_consonance = False
+            for line in self.lines:
+                if line.tokenized_text and not line.consonance:
+                    missing_consonance = True
+
             # Uses half the number of lines +1 to set the max number of unique features for a feature to count as
             # having some kind of pattern. So, for example, a 16 or 15 line poem would need no more than 8 rhymes.
             max_sets = ((len(self.lines) // 2) + 1)
-            if not len(rhyme_order) > max_sets:
-                # Assigns letters to the ordered dicts.
-                rhyme_order = assign_letters_to_dict(rhyme_order)
-                # Sets rhyme scheme to the appropriate sequence of letters.
-                self.rhyme_scheme = ''.join([' ' if not line.rhyme else rhyme_order[line.rhyme] for line in self.lines])
+            # Assigns letters to the ordered dicts.
+            rhyme_order = assign_letters_to_dict(rhyme_order)
+            # Sets rhyme scheme to the appropriate sequence of letters.
+            self.rhyme_scheme = ''.join([' ' if not line.rhyme else rhyme_order[line.rhyme] for line in self.lines])
             if not len(asso_order) > max_sets:
                 asso_order = assign_letters_to_dict(asso_order)
                 self.asso_scheme = ''.join(
                     [' ' if not line.assonance else asso_order[line.assonance] for line in self.lines])
-            if not len(cons_order) > max_sets:
+            if not len(cons_order) > max_sets and not missing_consonance:
                 cons_order = assign_letters_to_dict(cons_order)
                 self.cons_scheme = ''.join(
                     [' ' if not line.consonance else cons_order[line.consonance] for line in self.lines])
@@ -191,32 +207,44 @@ class Poem:
                 i_rhyme_order = assign_letters_to_dict(i_rhyme_order)
                 self.i_rhyme_scheme = ''.join(
                     [' ' if not line.i_rhyme else i_rhyme_order[line.i_rhyme] for line in self.lines])
-            # Has stanzas get their rhyme-like features.
-            for stanza in self.stanzas:
-                stanza.get_rhymes()
 
         # Log the rhyming scheme if we have one.
+        header2("Rhyme")
         if self.rhyme_scheme:
-            scheme_name = name_rhyme(self.rhyme_scheme)
             logging.info("Rhyming Scheme: %s", self.rhyme_scheme)
-            if scheme_name:
-                logging.info("Apparent form: %s", scheme_name)
+            stanza_scheme = [stanza.rhyme_scheme for stanza in self.stanzas if stanza.rhyme_scheme]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Rhyming Schemes: %s", ', '.join(stanza_scheme))
         # Try assonance scheme and then consonance scheme if we didn't.
         elif self.asso_scheme:
             logging.info("Assonance Scheme: %s", self.asso_scheme)
+            stanza_scheme = [stanza.asso_scheme for stanza in self.stanzas if stanza.asso_scheme]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Assonance Schemes: %s", ', '.join(stanza_scheme))
         elif self.cons_scheme:
             logging.info("Consonance Scheme: %s", self.cons_scheme)
+            stanza_scheme = [stanza.cons_scheme for stanza in self.stanzas if stanza.cons_scheme]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Consonance Schemes: %s", ', '.join(stanza_scheme))
         # Print line initial rhyme scheme if we got one.
         if self.i_rhyme_scheme:
             logging.info("Head Rhyming Scheme: %s", self.i_rhyme_scheme)
+            stanza_scheme = [stanza.i_rhyme_scheme for stanza in self.stanzas if stanza.i_rhyme_scheme]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Head Rhyming Schemes: %s", ', '.join(stanza_scheme))
 
-        # Have stanzas report their rhyme like features.
+    def get_sonic_features(self):
+        # Has stanzas get their sonic features.
+        for stanza in self.stanzas:
+            stanza.get_sonic_features()
+        # Have stanzas report their sonic features.
+        header1("Sonic Features")
         for index, stanza in enumerate(self.stanzas):
             logging.info('Stanza %s:\n%s', index + 1, stanza.plaintext)
-            stanza.print_rhyme()
+            stanza.print_sonic_features()
 
     def get_scansion(self):
-        if not self.scansion:
+        if not self.scans:
             # Have all lines get their length.
             for index, line in enumerate(self.lines):
                 if line.tokenized_text:
@@ -292,9 +320,10 @@ class Poem:
                                 line_scan.append(stresses[0])
                                 position += len(stresses[0])
                     line.final_scansion = line_scan
+            # TODO: Use self.lines_by_syllable to report if any scans/meters are uncertain. Do the same in get_meter().
 
             # Log scansion.
-            logging.info("Scansion")
+            header1('Scansion')
             for line in self.lines:
                 if line.tokenized_text:
                     tags_with_text(line.tokenized_text, convert_scansion(line.final_scansion), line.line_num, True)
@@ -302,22 +331,53 @@ class Poem:
                     logging.info('')
 
     def get_meter(self):
+        if not self.scans:
+            logging.warning("Scansion required for meter. Generating scansion...")
+            self.get_scansion()
         if not self.meters:
             for length, scans in self.scans.items():
                 if scans[3]:
-                    self.meters.append((length, name_meter(scans[3])))
+                    meter, repetitions = name_meter(scans[3])
+                    name = ' '.join([item for item in [meter, repetitions] if item])
+                    self.meters[length] = (meter, repetitions, name)
                 else:
-                    self.meters.append((length, name_meter(scans[2])))
+                    meter, repetitions = name_meter(scans[2])
+                    name = ' '.join([item for item in [meter, repetitions] if item])
+                    self.meters[length] = (meter, repetitions, name)
         # Get sorted lists of non-zero length meter names that were recognized/not for logging
-        meters = sorted([(length, name) for length, name in self.meters if length > 0])
+        meters = sorted([(length, name) for length, (meter, repetitions, name) in self.meters.items() if length > 0])
         # Log 'em
         if meters:
-            logging.info("Apparent meter(s): %s", ', '.join([name + ' (' + str(length) + ')'
-                                                             for length, name in meters]))
+            header2("Meter")
+            logging.info("Apparent meter(s): %s",
+                         ', '.join([name + ' (' + str(length) + ')' for length, name in meters]))
+
+    def get_meter_v_scan(self):
+        if not self.scans:
+            logging.warning("Scansion required for comparison. Generating scansion...")
+            self.get_scansion()
+        header1("Scansion vs Meter")
+        for line in self.lines:
+            meter = self.scans[line.syllables][3] if line.syllables in self.scans else None
+            if line.tokenized_text and meter:
+                line_stress = []
+                position = 0
+                for word in line.final_scansion:
+                    word_stress = ''
+                    for stress in word:
+                        if stress == meter[position]:
+                            word_stress += stress
+                            position += 1
+                        else:
+                            word_stress += '̲' + stress
+                            position += 1
+                    line_stress.append(word_stress)
+                tags_with_text(line.tokenized_text, convert_scansion(line_stress), line.line_num, True)
+            else:
+                logging.info('')
 
     # Gets parts of speech for sentences/lines/words
     def get_pos(self):
-
         # Have each sentence get parts of speech
         for sentence in self.sentences:
             sentence.get_pos()
@@ -350,8 +410,7 @@ class Poem:
         for pos in self.pos_count:
             simple_name = config.short_pos_dict[pos]
             self.simple_pos_count[simple_name] += self.pos_count.get(pos)
-
-        logging.info("Parts of speech:")
+        header1('Parts of speech')
         for line in self.lines:
             if line.tokenized_text and line.pos:
                 simplified = []
@@ -360,10 +419,17 @@ class Poem:
                     simplified.append(config.short_pos_dict[pos])
                 tags_with_text(line.tokenized_text, simplified, line.line_num)
 
-    # Gets synsets for words
-    def get_synsets(self):
-        for word in self.words:
-            self.words[word].get_synsets()
+    def get_form(self):
+        stanza_forms = []
+        for index, stanza in enumerate(self.stanzas):
+            stanza.get_form()
+            stanza_forms.append(join_list_proper(stanza.form, 'or') + ' (' + str(index + 1) + ')')
+        header2("Form")
+        logging.info("Stanzaic Forms: %s", '; '.join(stanza_forms))
+
+        # scheme_name = name_rhyme(self.rhyme_scheme)
+        # if scheme_name:
+        #     logging.info("Apparent form: %s", scheme_name)
 
     # TODO: currently ouputting scansion incorrectly.
     def record(self, outputfile=config.output_file):
