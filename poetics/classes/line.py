@@ -1,10 +1,9 @@
 import logging
 import re
+from itertools import product
 
 import poetics.config as config
 from poetics.conversions import tokenize
-
-from itertools import product
 
 
 class Line:
@@ -76,8 +75,7 @@ class Line:
     # Gets stress patterns for all tokenized words in line.
     def get_stress(self):
         if not self.pos:
-            logging.error("Parts of speech required for scansion.")
-            logging.error("Generating parts of speech.")
+            logging.warning("Parts of speech required for scansion. Generating parts of speech...")
             self.parent.get_pos()
         for index, word in enumerate(self.tokenized_text):
             self.stress.append(self.parent.words[word].stresses)
