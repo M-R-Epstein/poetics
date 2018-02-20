@@ -1,13 +1,13 @@
 import logging
+import os
+import re
 
 from poetics import config as config
+from poetics.classes.poem import Poem
 
 
 def create_poem(filename, title=None, author=None, directory=config.poem_directory):
-    import re
-    from poetics.classes.poem import Poem
-
-    with open(directory + '/' + filename) as data:
+    with open(directory + '/' + filename, encoding="utf-8") as data:
         read_data = data.readlines()
 
     if not title:
@@ -32,10 +32,6 @@ def create_poem(filename, title=None, author=None, directory=config.poem_directo
 
 
 def process_poems(directory=config.poem_directory, outputfile='output.csv'):
-    import os
-    import re
-    from poetics.classes.poem import Poem
-
     # Does the provided directory exist?
     if not os.path.isdir(directory):
         logging.warning("\"%s\" is not a valid directory.", directory)
