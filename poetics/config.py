@@ -19,6 +19,8 @@ spacy_model_name = 'en_core_web_sm'
 cmudict_path = 'text/cmudict.json'
 # Location for syllabified version of cmudict.
 syllabified_path = 'text/cmudict_syllabified.json'
+# Location for stanza forms list.
+stanza_forms_path = 'text/stanza_forms.json'
 # Path for cmudict wordlist.
 cmudict_wordlist_path = 'text/wordlist.txt'
 
@@ -49,6 +51,11 @@ rhyme_patterns = {'AAA': 'Tercet', 'ABA': 'Tercet', 'AAAA': 'Tanaga', 'AABA': 'R
                   'ABABCCDDEDECCDDEDE': 'Chant Royal', 'BCBACDEFABCBACDEFGG': 'Individualtean',
                   'ABCCABADEFFEDGGHHIII': 'Fantasy', 'ABABBCCDCDABABBCCDCDABABBCCDCDCCDCD': 'Ballade Supreme',
                   'ABCDEFFAEBDCCFDABEECBFADDEACFBBDFECADEF': 'Sestina'}
+# Classical meters
+classic_meters = {'1010011001100101': 'choriamb', '10100101010': 'hendecasyllabe', '10100101011': 'hendecasyllabe',
+                  '11100101010': 'hendecasyllabe', '11100101011': 'hendecasyllabe', '01010101011': 'hendecasyllabe',
+                  '01010101010': 'hendecasyllabe', '10101001010': 'sapphic', '10010': 'adonic', '10011': 'adonic',
+                  '10010011001001': 'classical pentameter'}
 # Length 2 metrical foot dictionary.
 metrical_feet_2 = {'00': 'pyrrhic', '01': 'iamb', '10': 'trochee', '11': 'spondee'}
 # Length 3 metrical foot dictionary.
@@ -76,6 +83,22 @@ meter_names = ['monometer', 'dimeter', 'trimeter', 'tetrameter', 'pentameter', '
                'pentadecameter', 'hexadecameter', 'heptadecameter', 'octadecameter', 'nonadecameter', 'icosameter',
                'henicosameter', 'docosameter', 'tricosameter', 'tetracosameter', 'pentacosameter', 'hexacosameter',
                'heptacosameter', 'octacosameter', 'nonacosameter', 'triacontameter']
+# Stanza names by length.
+stanza_length_names = ['single', 'couplet', 'tercet', 'quatrain', 'quintet', 'sestet', 'septet', 'octave', 'nine',
+                       'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen',
+                       'nineteen', 'twenty', 'twenty-one', 'twenty-two', 'twenty-three', 'twenty-four', 'twenty-five',
+                       'twenty-six', 'twenty-seven', 'twenty-eight', 'twenty-nine', 'thirty', 'thirty-one',
+                       'thirty-two', 'thirty-three', 'thirty-four', 'thirty-five', 'thirty-six', 'thirty-seven',
+                       'thirty-eight', 'thirty-nine', 'forty', 'forty-one', 'forty-two', 'forty-three', 'forty-four',
+                       'forty-five', 'forty-six', 'forty-seven', 'forty-eight', 'forty-nine', 'fifty', 'fifty-one',
+                       'fifty-two', 'fifty-three', 'fifty-four', 'fifty-five', 'fifty-six', 'fifty-seven',
+                       'fifty-eight', 'fifty-nine', 'sixty', 'sixty-one', 'sixty-two', 'sixty-three', 'sixty-four',
+                       'sixty-five', 'sixty-six', 'sixty-seven', 'sixty-eight', 'sixty-nine', 'seventy', 'seventy-one',
+                       'seventy-two', 'seventy-three', 'seventy-four', 'seventy-five', 'seventy-six', 'seventy-seven',
+                       'seventy-eight', 'seventy-nine', 'eighty', 'eighty-one', 'eighty-two', 'eighty-three',
+                       'eighty-four', 'eighty-five', 'eighty-six', 'eighty-seven', 'eighty-eight', 'eighty-nine',
+                       'ninety', 'ninety-one', 'ninety-two', 'ninety-three', 'ninety-four', 'ninety-five', 'ninety-six',
+                       'ninety-seven', 'ninety-eight', 'ninety-nine', 'one hundred']
 # Lists for determining stress estimation of single syllable words based on part of speech tag.
 # Stress tendency parts of speech tags. Verbs and nouns.
 stress_pos = ['BES', 'MD', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
@@ -98,4 +121,6 @@ with open(os.path.join(directory, syllabified_path)) as file:
     syllabified_dict = json.load(file)
 with open(os.path.join(directory, cmudict_path)) as file:
     cmu_dict = json.load(file)
+with open(os.path.join(directory, stanza_forms_path)) as file:
+    stanza_forms = json.load(file)
 poem_directory = os.path.split(directory)[0] + poem_directory
