@@ -1,11 +1,38 @@
 import logging
+import re
+
+
+def header1(head):
+    width = 50
+    top = ('=' * width)
+    bot = ('=' * width)
+    whitespace = ' ' * ((width - len(head))//2)
+    logging.info(top)
+    logging.info('%s%s', whitespace, head)
+    logging.info(bot)
+
+
+def header2(head):
+    width = 50 - (len(head) + 2)
+    left = '=' * (width // 2)
+    right = '=' * ((width // 2) + (width % 2 > 0))
+    logging.info("%s %s %s", left, head, right)
+
+
+def join_list_proper(lst, term='and'):
+    if len(lst) == 1:
+        return lst[0]
+    elif len(lst) == 2:
+        return lst[0] + ' ' + term + ' ' + lst[1]
+    elif len(lst) > 2:
+        return ', '.join(lst[0:-1]) + ', ' + term + ' ' + lst[-1]
 
 
 def convert_scansion(scansion):
     converted_scan = []
     for scan in scansion:
-        converted = scan.replace('0', 'u')
-        converted = converted.replace('1', '/')
+        converted = scan.replace('0', 'u').replace('1', '/')
+        converted = re.sub("(̲?[u/])(?=[u/])", '\g<1> ', converted, )
         converted_scan.append(converted)
     return converted_scan
 
@@ -16,7 +43,7 @@ def tags_with_text(tokenized_text, tags, line_num=None, above=False):
     offset = 0
     # Use a bunch of nonsense to center the tags under the words
     for index, word in enumerate(tokenized_text):
-        dif = len(tokenized_text[index]) - len(tags[index])
+        dif = len(tokenized_text[index]) - (len(tags[index]) - tags[index].count('̲'))
         offdif = dif + offset
         if offdif > 0:
             # Puts spaces equal to half (rounded down) the difference between tag/word length before tag
