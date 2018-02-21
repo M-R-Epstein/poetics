@@ -320,7 +320,6 @@ class Poem:
                                 line_scan.append(stresses[0])
                                 position += len(stresses[0])
                     line.final_scansion = line_scan
-            # TODO: Use self.lines_by_syllable to report if any scans/meters are uncertain. Do the same in get_meter().
 
             # Log scansion.
             header1('Scansion')
@@ -330,6 +329,16 @@ class Poem:
                                    line.line_num, True)
                 else:
                     logging.info('')
+            # Adds warnings to the log for the scansion of lines with a syllable length that had few examples
+            unreliable_list = []
+            for syllables, indexes in self.lines_by_syllable.items():
+                if len(indexes) < 4:
+                    unreliable_list.append((syllables, len(indexes)))
+            if unreliable_list:
+                unreliable_list.sort()
+                logging.warning("The scansion for %s syllable lines may be unreliable due to limited examples (%s).",
+                                join_list_proper([str(syllables) for syllables, count in unreliable_list]),
+                                ', '.join([str(count) for syllables, count in unreliable_list]))
 
     def get_meter(self):
         if not self.scans:
@@ -352,6 +361,16 @@ class Poem:
             header2("Meter")
             logging.info("Apparent meter(s): %s",
                          ', '.join([name + ' (' + str(length) + ')' for length, name in meters]))
+            # Adds warnings to the log for the meter of lines with a syllable length that had few examples
+            unreliable_list = []
+            for syllables, indexes in self.lines_by_syllable.items():
+                if len(indexes) < 4:
+                    unreliable_list.append((syllables, len(indexes)))
+            if unreliable_list:
+                unreliable_list.sort()
+                logging.warning("The meter for %s syllable lines may be unreliable due to limited examples (%s).",
+                                join_list_proper([str(syllables) for syllables, count in unreliable_list]),
+                                ', '.join([str(count) for syllables, count in unreliable_list]))
 
     def get_meter_v_scan(self):
         if not self.scans:
