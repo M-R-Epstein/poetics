@@ -1,4 +1,5 @@
 import logging
+import re
 
 import poetics.config as config
 from poetics.conversions import tokenize
@@ -25,10 +26,14 @@ class Sentence:
                     if key == token_list[index]:
                         yield value
                         index += 1
-                    # If the next tag in the list is tagged posessive.
-                    elif tag_list[index2 + 1][1] == 'POS':
-                        # Then check if the key matches the beginning of the token.
-                        if key == token_list[index][:len(key)]:
+                    else:
+                        # If not, check if the key is in the token (accounts for possessives and stuff).
+                        match = re.match(key, token_list[index])
+                        if match:
+                            yield value
+                            index += 1
+                        match = re.match(token_list[index], key)
+                        if match:
                             yield value
                             index += 1
 
@@ -40,6 +45,6 @@ class Sentence:
                 if len(pos_list) == len(self.tokenized_text):
                     self.pos = pos_list
                 else:
-                    logging.error("Failure matching part of speech tags to tokens for %s.", self)
+                    logging.error("Failure matching part of speech tags to tokens for %s:\n%s", self, self.plaintext)
 
         return self.pos
