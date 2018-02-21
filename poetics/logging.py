@@ -43,7 +43,7 @@ def convert_scansion(scansion):
 
 # Takes a list of tags and a list of tokenized words and attempts to align them in a readable form in the log.
 # If above = True, then the tags go above the text instead of under it.
-def tags_with_text(split_by_tokens, tokenized_text, tags, line_num=None, above=False):
+def tags_with_text(split_by_tokens, tokenized_text, tags, line_num=None, above=False, logger=logging.info):
     line_out = ''
     offset = 0
     for index, word in enumerate(tags):
@@ -67,13 +67,13 @@ def tags_with_text(split_by_tokens, tokenized_text, tags, line_num=None, above=F
             offset += dif
     # Output each line with the tags over/under
     if above is True:
-        logging.info(line_out)
+        logger(line_out)
     if line_num:
-        logging.info("%s (%s)", ''.join(split_by_tokens), line_num)
+        logger("%s (%s)", ''.join(split_by_tokens), line_num)
     else:
-        logging.info(''.join(split_by_tokens))
+        logger(''.join(split_by_tokens))
     if above is False:
-        logging.info(line_out)
+        logger(line_out)
 
 
 # Takes a sound set and prints it.
