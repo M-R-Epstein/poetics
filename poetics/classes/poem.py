@@ -287,12 +287,15 @@ class Poem:
                 if line.tokenized_text:
                     line_scan = []
                     position = 0
+                    best = self.scans[line.syllables][3]
                     pattern = self.scans[line.syllables][3]
                     # If we have no best_match, we use predicted_merged.
                     if not pattern:
                         pattern = self.scans[line.syllables][2]
                     # Loop through stresses in lines and add that stress to fin_scan.
                     for stresses in line.stress:
+                        # Resolves words with multiple possible stress patterns based on best_match or predicted_merged
+                        # if no best_match is available.
                         if len(stresses) > 1:
                             ratios = []
                             for stress in stresses:
@@ -300,21 +303,22 @@ class Poem:
                             best_index = ratios.index(max(ratios))
                             line_scan.append(stresses[best_index])
                             position += len(stresses[best_index])
+                        # Resolves single syllable words using best_match or stress tendency if we have no best_match.
                         else:
                             if stresses[0] == 'S' or stresses[0] == 'W':
-                                if pattern[position] == 'X':
+                                if not best:
                                     line_scan.append('1')
                                     position += 1
                                 else:
-                                    line_scan.append(pattern[position])
+                                    line_scan.append(best[position])
                                     position += 1
-                            # Note: words with neutral tendency resolve as unstressed if we have no pattern.
+                            # Note: words with neutral tendency resolve as unstressed if we have no best_match.
                             elif stresses[0] == 'U' or stresses[0] == 'N':
-                                if pattern[position] == 'X':
+                                if not best:
                                     line_scan.append('0')
                                     position += 1
                                 else:
-                                    line_scan.append(pattern[position])
+                                    line_scan.append(best[position])
                                     position += 1
                             else:
                                 line_scan.append(stresses[0])
@@ -377,25 +381,34 @@ class Poem:
             logging.warning("Scansion required for comparison. Generating scansion...")
             self.get_scansion()
         header1("Scansion vs Meter")
+        lines_missing_meter = False
         for line in self.lines:
             meter = self.scans[line.syllables][3] if line.syllables in self.scans else None
-            if line.tokenized_text and meter:
-                line_stress = []
-                position = 0
-                for word in line.final_scansion:
-                    word_stress = ''
-                    for stress in word:
-                        if stress == meter[position]:
-                            word_stress += stress
-                            position += 1
-                        else:
-                            word_stress += '̲' + stress
-                            position += 1
-                    line_stress.append(word_stress)
-                tags_with_text(line.split_by_tokens, line.tokenized_text, convert_scansion(line_stress), line.line_num,
-                               True)
+            if line.tokenized_text:
+                if meter:
+                    line_stress = []
+                    position = 0
+                    for word in line.final_scansion:
+                        word_stress = ''
+                        for stress in word:
+                            if stress == meter[position]:
+                                word_stress += stress
+                                position += 1
+                            else:
+                                word_stress += '̲' + stress
+                                position += 1
+                        line_stress.append(word_stress)
+                    tags_with_text(line.split_by_tokens, line.tokenized_text, convert_scansion(line_stress),
+                                   line.line_num, True)
+                # Handle lines without a meter.
+                else:
+                    tags_with_text(line.split_by_tokens, line.tokenized_text, convert_scansion(line.final_scansion),
+                                   str(line.line_num) + '*', True, logging.warning)
+                    lines_missing_meter = True
             else:
                 logging.info('')
+        if lines_missing_meter:
+            logging.warning("No meter available for lines marked with *.")
 
     # Gets parts of speech for sentences/lines/words
     def get_pos(self):
@@ -439,6 +452,8 @@ class Poem:
                 for pos in line.pos:
                     simplified.append(config.short_pos_dict[pos])
                 tags_with_text(line.split_by_tokens, line.tokenized_text, simplified, line.line_num)
+            else:
+                logging.info('')
 
     def get_form(self):
         stanza_forms = []
