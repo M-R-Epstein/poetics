@@ -11,7 +11,7 @@ poetics.process_poems()
 
 # Single Poem operations.
 # Optional arguments for create_poem() are title, author, and directory
-poem = poetics.poetics.create_poem('when my light is spent-john milton.txt')
+poem = poetics.create_poem('when my light is spent-john milton.txt')
 poem.get_rhymes()
 poem.get_sonic_features()
 poem.get_pos()
@@ -20,5 +20,3 @@ poem.get_meter_v_scan()
 poem.get_meter()
 poem.get_form()
 poem.record()
-
-
