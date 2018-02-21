@@ -66,7 +66,7 @@ Batch processes a directory full of poems. Default directory is /poems.
 import poetics
 
 # Single Poem operations.
-poem = poetics.create_poem('William Blake/Songs of Innocence/the chimney sweeper-william blake.txt')
+poem = poetics.create_poem('when my light is spent-john milton.txt')
 poem.get_rhymes()
 poem.get_sonic_features()
 poem.get_pos()
