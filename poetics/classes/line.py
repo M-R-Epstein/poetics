@@ -3,15 +3,16 @@ import re
 from itertools import product
 
 import poetics.config as config
-from poetics.conversions import tokenize
+from poetics.conversions import tokenize, split_by_tokens
 
 
 class Line:
     def __init__(self, text, parent=None):
         self.parent = parent
         self.line_num = None
-        self.plaintext = text
+        self.plaintext = text.rstrip()
         self.tokenized_text = []
+        self.split_by_tokens = []
         self.word_indexes = ()
 
         self.initial_word = None
@@ -46,6 +47,7 @@ class Line:
             self.tokenized_text = tokenize(text)
             self.initial_word = self.tokenized_text[0]
             self.final_word = self.tokenized_text[-1]
+            self.split_by_tokens = split_by_tokens(self.tokenized_text, self.plaintext)
 
     def get_rhymes(self):
         # Note: initial assonance/consonance are not used for anything presently.

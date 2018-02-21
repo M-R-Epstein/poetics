@@ -43,11 +43,15 @@ def convert_scansion(scansion):
 
 # Takes a list of tags and a list of tokenized words and attempts to align them in a readable form in the log.
 # If above = True, then the tags go above the text instead of under it.
-def tags_with_text(tokenized_text, tags, line_num=None, above=False):
+def tags_with_text(split_by_tokens, tokenized_text, tags, line_num=None, above=False):
     line_out = ''
     offset = 0
-    for index, word in enumerate(tokenized_text):
-        # the .count portion is to account for zero length characters (presently combining underline is the only one).
+    for index, word in enumerate(tags):
+        # Pre space accounts for the difference in length between the index of split_by_tokens and the token itself.
+        pre_space = len(split_by_tokens[index]) - len(tokenized_text[index])
+        if pre_space > 0:
+            line_out += ' ' * pre_space
+        # The .count portion is to account for zero length characters (presently combining underline is the only one).
         dif = len(tokenized_text[index]) - (len(tags[index]) - tags[index].count('̲'))
         offdif = dif + offset
         if offdif > 0:
@@ -55,20 +59,19 @@ def tags_with_text(tokenized_text, tags, line_num=None, above=False):
             # Puts spaces equal to half (rounded up) the difference between tag/word length after tag
             line_out += (' ' * (offdif // 2)) \
                         + tags[index] \
-                        + (' ' * (offdif // 2 + (offdif % 2 > 0))) \
-                        + ' '
+                        + (' ' * (offdif // 2 + (offdif % 2 > 0)))
             offset = 0
         else:
-            line_out += tags[index] + ' '
+            line_out += tags[index]
             # Offset is just keeping track of how far we are pushed to the right by tag length>word length
             offset += dif
     # Output each line with the tags over/under
     if above is True:
         logging.info(line_out)
     if line_num:
-        logging.info("%s (%s)", ' '.join(tokenized_text), line_num)
+        logging.info("%s (%s)", ''.join(split_by_tokens), line_num)
     else:
-        logging.info(' '.join(tokenized_text))
+        logging.info(''.join(split_by_tokens))
     if above is False:
         logging.info(line_out)
 

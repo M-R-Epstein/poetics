@@ -326,7 +326,8 @@ class Poem:
             header1('Scansion')
             for line in self.lines:
                 if line.tokenized_text:
-                    tags_with_text(line.tokenized_text, convert_scansion(line.final_scansion), line.line_num, True)
+                    tags_with_text(line.split_by_tokens, line.tokenized_text, convert_scansion(line.final_scansion),
+                                   line.line_num, True)
                 else:
                     logging.info('')
 
@@ -372,7 +373,8 @@ class Poem:
                             word_stress += '̲' + stress
                             position += 1
                     line_stress.append(word_stress)
-                tags_with_text(line.tokenized_text, convert_scansion(line_stress), line.line_num, True)
+                tags_with_text(line.split_by_tokens, line.tokenized_text, convert_scansion(line_stress), line.line_num,
+                               True)
             else:
                 logging.info('')
 
@@ -417,7 +419,7 @@ class Poem:
                 # Create a list of simplied tags for each line.
                 for pos in line.pos:
                     simplified.append(config.short_pos_dict[pos])
-                tags_with_text(line.tokenized_text, simplified, line.line_num)
+                tags_with_text(line.split_by_tokens, line.tokenized_text, simplified, line.line_num)
 
     def get_form(self):
         stanza_forms = []

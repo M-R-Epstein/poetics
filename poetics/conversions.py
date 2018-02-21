@@ -2,6 +2,7 @@ import re
 
 from collections import Counter
 
+
 # Tokenizes text into individual words.
 def tokenize(line):
     tokenized = []
@@ -21,6 +22,19 @@ def tokenize(line):
     # Split into individual words
     tokenized.extend([word for word in line.strip().split()])
     return tokenized
+
+
+# Splits up the plaintext so that each item in the list ENDS with a token.
+# The returned list may be one item longer than the input list because of trailing non-token text.
+def split_by_tokens(tokens, plaintext):
+    by_tokens = []
+    for token in tokens:
+        match = re.search(token, plaintext)
+        by_tokens.append(plaintext[:match.end()])
+        plaintext = plaintext[match.end():]
+    if plaintext:
+        by_tokens.append(plaintext)
+    return by_tokens
 
 
 # Converts parts of speech tags from tagger to those used by wordnet. Returns None if not relevant
