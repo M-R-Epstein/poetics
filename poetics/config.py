@@ -58,8 +58,8 @@ classic_meters = {'1010011001100101': 'choriamb', '10100101010': 'hendecasyllabe
                   '11100101010': 'hendecasyllabe', '11100101011': 'hendecasyllabe', '01010101011': 'hendecasyllabe',
                   '01010101010': 'hendecasyllabe', '10101001010': 'sapphic', '10111001010': 'sapphic',
                   '10101001011': 'sapphic', '10111001011': 'sapphic', '10010': 'adonic', '10011': 'adonic',
-                  '10010011001001': 'classical pentameter', '11010100100': 'Alcaic hendecasyllabe',
-                  '110101010': 'Alcaic enneasyllable', '1001001010': 'Alcaic decasyllable',
+                  '10010011001001': 'classical pentameter', '11010100100': 'alcaic hendecasyllabe',
+                  '110101010': 'alcaic enneasyllable', '1001001010': 'alcaic decasyllable',
                   '10010010010010011': 'classical heroic'}
 # Length 2 metrical foot dictionary.
 metrical_feet_2 = {'00': 'pyrrhic', '01': 'iamb', '10': 'trochee', '11': 'spondee'}
