@@ -53,8 +53,6 @@ class Word:
 def get_synsets(self):
     for pos in self.wordnet_pos:
         returned = wordnet.synsets(self.plaintext, pos=pos)
-        # Note: Should probably try specifying no part of speech if we get no return. Depends on quality of tagger.
-        # TODO: Need to check out Morphy for handling word forms for wordnet
         logging.debug('Search for %s as %s returned:\n %s', self.plaintext, pos, returned)
         if returned:
             self.synsets[pos] = returned
