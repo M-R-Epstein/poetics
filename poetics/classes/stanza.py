@@ -16,7 +16,7 @@ class Stanza:
 
         self.lines = []
         self.line_count = []
-        self.line_lengths = None
+        self.line_lengths = []
         self.meters = None
         self.form = None
 
@@ -83,23 +83,20 @@ class Stanza:
             logging.warning("Meter required for form identification. Generating meter...")
             self.parent.get_meter()
 
-        length_list = []
         # Create a list of syllables per line.
         for line in self.lines:
-            length_list.append(str(len(''.join(line.final_scansion))))
-        # If they are all the same length, line_lengths is set to that one length.
-        if len(set(length_list)) == 1:
-            self.line_lengths = length_list[0]
+            self.line_lengths.append(str(len(''.join(line.final_scansion))))
+        # If they are all the same length, we only need the one meter.
+        if len(set(self.line_lengths)) == 1:
             self.meters = [meter for length, (meter, repetitions, name) in self.parent.meters.items()
-                           if length == int(length_list[0])][0]
-        # Otherwise, a space separated list of lengths.
+                           if length == int(self.line_lengths[0])][0]
+        # Else, a list of meters
         else:
-            self.line_lengths = ' '.join(length_list)
             meter_list = []
-            for length in length_list:
+            for length in self.line_lengths:
                 meter_list.append(self.parent.meters[int(length)][0])
             self.meters = ' '.join(meter_list)
-
+            print(self.meters)
         self.form = name_stanza(self.rhyme_scheme, self.line_lengths, self.meters, self.line_count)
 
     def get_sonic_features(self):
