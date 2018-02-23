@@ -19,6 +19,8 @@ spacy_model_name = 'en_core_web_sm'
 cmudict_path = 'text/cmudict.json'
 # Location for syllabified version of cmudict.
 syllabified_path = 'text/cmudict_syllabified.json'
+# Location for poem form lists.
+poem_forms_path = 'text/poem_forms.json'
 # Location for stanza forms list.
 stanza_forms_path = 'text/stanza_forms.json'
 # Path for cmudict wordlist.
@@ -54,8 +56,11 @@ rhyme_patterns = {'AAA': 'Tercet', 'ABA': 'Tercet', 'AAAA': 'Tanaga', 'AABA': 'R
 # Classical meters
 classic_meters = {'1010011001100101': 'choriamb', '10100101010': 'hendecasyllabe', '10100101011': 'hendecasyllabe',
                   '11100101010': 'hendecasyllabe', '11100101011': 'hendecasyllabe', '01010101011': 'hendecasyllabe',
-                  '01010101010': 'hendecasyllabe', '10101001010': 'sapphic', '10010': 'adonic', '10011': 'adonic',
-                  '10010011001001': 'classical pentameter'}
+                  '01010101010': 'hendecasyllabe', '10101001010': 'sapphic', '10111001010': 'sapphic',
+                  '10101001011': 'sapphic', '10111001011': 'sapphic', '10010': 'adonic', '10011': 'adonic',
+                  '10010011001001': 'classical pentameter', '11010100100': 'Alcaic hendecasyllabe',
+                  '110101010': 'Alcaic enneasyllable', '1001001010': 'Alcaic decasyllable',
+                  '10010010010010011': 'classical heroic'}
 # Length 2 metrical foot dictionary.
 metrical_feet_2 = {'00': 'pyrrhic', '01': 'iamb', '10': 'trochee', '11': 'spondee'}
 # Length 3 metrical foot dictionary.
@@ -121,6 +126,11 @@ with open(os.path.join(directory, syllabified_path)) as file:
     syllabified_dict = json.load(file)
 with open(os.path.join(directory, cmudict_path)) as file:
     cmu_dict = json.load(file)
+with open(os.path.join(directory, poem_forms_path)) as file:
+    poem_forms_file = json.load(file)
+poem_forms = poem_forms_file[0]
+poem_forms_repeating = poem_forms_file[1]
+poem_forms_stanzaic = poem_forms_file[2]
 with open(os.path.join(directory, stanza_forms_path)) as file:
     stanza_forms = json.load(file)
 poem_directory = os.path.split(directory)[0] + poem_directory

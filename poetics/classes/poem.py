@@ -13,7 +13,7 @@ from poetics.classes.stanza import Stanza
 from poetics.classes.word import Word
 from poetics.conversions import convert_pos
 from poetics.logging import tags_with_text, convert_scansion, header1, header2, join_list_proper
-from poetics.lookups import name_meter
+from poetics.lookups import name_meter, name_poem
 from poetics.patterning import check_meters, predict_scan, resolve_rhyme, assign_letters_to_dict, pattern_match_ratio
 
 
@@ -22,6 +22,7 @@ class Poem:
 
         self.title = title
         self.author = author
+        self.form = None
 
         self.stanzas = []
         self.stanza_indexes = []
@@ -456,16 +457,47 @@ class Poem:
                 logging.info('')
 
     def get_form(self):
-        stanza_forms = []
+        stanza_forms_out = {}
         for index, stanza in enumerate(self.stanzas):
             stanza.get_form()
-            stanza_forms.append(join_list_proper(stanza.form, 'or') + ' (' + str(index + 1) + ')')
-        header2("Form")
-        logging.info("Stanzaic Forms: %s", '; '.join(stanza_forms))
+            stanza_type = join_list_proper(stanza.form, 'or')
+            if stanza_type not in stanza_forms_out:
+                stanza_forms_out[stanza_type] = []
+            stanza_forms_out[stanza_type].append(str(index + 1))
 
-        # scheme_name = name_rhyme(self.rhyme_scheme)
-        # if scheme_name:
-        #     logging.info("Apparent form: %s", scheme_name)
+        poem_forms_out = []
+        unique_forms = list(set([tuple(stanza.form) for stanza in self.stanzas]))
+        # If we only have one stanza we return the appropriate first entries in the config.poem_forms_stanzaic dict.
+        if len(self.stanzas) == 1:
+            stanza_forms = self.stanzas[0].form
+            for form in stanza_forms:
+                if form in config.poem_forms_stanzaic:
+                    poem_forms_out.append(config.poem_forms_stanzaic[form][0] or form)
+                else:
+                    poem_forms_out.append("Unrecognized form")
+        else:
+            # Get possible names
+            poem_forms_out.extend(name_poem(self.rhyme_scheme,
+                                            [length for stanza in self.stanzas for length in stanza.line_lengths],
+                                            sum([stanza.line_count for stanza in self.stanzas])))
+            # If all of the stanzas have the same form(s), but we have multiples, return the appropriate second entries.
+            if len(unique_forms) == 1:
+                for form in unique_forms[0]:
+                    if form in config.poem_forms_stanzaic:
+                        poem_forms_out.append(config.poem_forms_stanzaic[form][1] or form)
+        self.form = poem_forms_out or ["Unrecognized form"]
+
+        poem_out = join_list_proper(poem_forms_out)
+        stanza_out = [stanza + ' (' + ', '.join(lines) + ')' for stanza, lines in stanza_forms_out.items()]
+
+        stanza_plural = ''
+        if len(stanza_out) > 1:
+            stanza_plural = 's'
+
+        header2("Form")
+        logging.info("Poetic Form: %s", poem_out)
+        logging.info("Stanzaic Form%s: %s", stanza_plural, '; '.join(stanza_out))
+
 
     # TODO: currently ouputting scansion incorrectly.
     def record(self, outputfile=config.output_file):

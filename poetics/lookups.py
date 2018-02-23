@@ -4,6 +4,7 @@ import re
 from Levenshtein import distance
 
 from poetics import config as config
+from poetics.patterning import get_repeating_rhyme_patterns
 
 
 # Returns pronunciations for words from json copy of cmudict.
@@ -27,7 +28,7 @@ def syllable_dict(word):
         return []
 
 
-# Note: Currently reads "o'er" as "over" which is correct but messes with scansion. Some kind of elision check?
+# Future: Currently reads "o'er" as "over" which is correct but messes with scansion. Some kind of elision check?
 # Gets a word's pronunciation from cmudict and syllabified pronunciation from a syllabified version.
 def get_phonetic(word):
     phonetic = []
@@ -76,7 +77,7 @@ def get_rhymes(pronunciations, syl_pronunciations):
     stress_bracket_consonants = []
 
     # Obtains word-initial consonant sounds,
-    # Note: Currently words without stress are ignored for stress-relative features.
+    # Note: currently words without stress are ignored for stress-relative features.
     for pronunciation in syl_pronunciations:
         stressed_syllable = ''
 
@@ -184,7 +185,7 @@ def name_meter(pattern):
             trimmed_pattern2 = [pattern[i:i + 2] for i in range(0, len(pattern) - 1, 2)]
             if len(set(trimmed_pattern1)) == 1:
                 foot = trimmed_pattern1[0]
-                foot_names.append((config.metrical_feet_2[foot], 'headless'))
+                foot_names.append((config.metrical_feet_2[foot], 'acephalous'))
                 repetition = len(trimmed_pattern1) + 1
             if len(set(trimmed_pattern2)) == 1:
                 foot = trimmed_pattern2[0]
@@ -216,6 +217,12 @@ def name_meter(pattern):
 
 
 def name_stanza(rhyme_scheme, line_lengths, meters, line_count):
+    # If all lines are the same length, set line_lengths to that one length.
+    if len(set(line_lengths)) == 1:
+        line_lengths = str(line_lengths[0])
+    else:
+        line_lengths = ' '.join(line_lengths)
+
     matches = []
     # Make a list of forms that are an appropriate number of lines.
     forms = [forms for forms in config.stanza_forms if forms[4] == line_count]
@@ -234,4 +241,26 @@ def name_stanza(rhyme_scheme, line_lengths, meters, line_count):
             matches.append('Unrecognized ' + config.stanza_length_names[line_count - 1] + ' line stanza')
         else:
             matches.append('Unrecognized stanza')
+    return matches
+
+
+def name_poem(rhyme_scheme, line_lengths, line_count):
+    # Strip whitespace from rhyme_scheme
+    rhyme_scheme = rhyme_scheme.replace(' ', '')
+    # If all lines are the same length, set line_lengths to that one length.
+    if len(set(line_lengths)) == 1:
+        line_lengths = str(line_lengths[0])
+    else:
+        line_lengths = ' '.join(line_lengths)
+
+    matches = []
+    # Get all possible forms that are the right length.
+    forms = [form for form in config.poem_forms if form[3] == line_count]
+    forms.extend(get_repeating_rhyme_patterns(line_count))
+    for form in forms:
+        # If the form has no rhyme requirement or the poem's rhyme scheme matches.
+        if not form[1] or rhyme_scheme in form[1]:
+            # If the form has no line length requirements or we have a match.
+            if not form[2] or line_lengths in form[2]:
+                matches.append(form[0])
     return matches
