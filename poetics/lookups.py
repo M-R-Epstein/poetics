@@ -1,5 +1,4 @@
 import logging
-import re
 
 from Levenshtein import distance
 
@@ -7,35 +6,42 @@ from poetics import config as config
 from poetics.patterning import get_repeating_rhyme_patterns
 
 
-# Returns pronunciations for words from json copy of cmudict.
-def cmu_dict(word):
+# Returns phonetic pronunciation for words from phoneticized cmudict.
+def phonetic_dict(word):
     word = word.lower()
-    # Return pronunciation if it's in there
-    if word in config.cmu_dict:
-        return config.cmu_dict[word]
+    if word in config.phoneticized_dict:
+        return config.phoneticized_dict[word]
     else:
         raise KeyError
 
 
-# Returns syllabified pronunciation for words from syllabified cmudict.
-def syllable_dict(word):
-    word = word.lower()
-    # Return syllabified pronunciation if it's in there
-    if word in config.syllabified_dict:
-        return config.syllabified_dict[word]
-    else:
-        logging.warning('Could not retrieve syllabified form of "%s"', word)
-        return []
-
-
+# Gets a word's pronunciations from phoneticized cmudict.
 # Future: Currently reads "o'er" as "over" which is correct but messes with scansion. Some kind of elision check?
-# Gets a word's pronunciation from cmudict and syllabified pronunciation from a syllabified version.
-def get_phonetic(word):
-    phonetic = []
-    syllabified = []
+def get_pronunciations(token):
+    special_cases = {'p.m.': 'pm',
+                     'vs.': 'vs',
+                     'mt.': 'mt',
+                     'mont.': 'mont',
+                     'co.': 'co',
+                     'corp.': 'corp',
+                     'inc.': 'inc',
+                     'ltd.': 'ltd',
+                     'dr.': 'dr',
+                     'rep.': 'rep',
+                     'rev.': 'rev',
+                     'sen.': 'sen',
+                     'st.': 'st',
+                     'jr.': 'jr',
+                     'bros.': 'bro\'s',
+                     'Ph.': 'ph'}
+    pronunciations = []
+    token = token.lower()
+    if token in special_cases:
+        word = special_cases[token]
+    else:
+        word = token
     try:
-        phonetic = cmu_dict(word)
-        syllabified = syllable_dict(word)
+        pronunciations = phonetic_dict(word)
     except KeyError:
         # If we don't get a working word from cmudict, have Enchant (spellchecker) try to find a recognized word.
         # Using a dictionary which is a list of words in cmudict so it only suggests pronouncable words.
@@ -47,8 +53,7 @@ def get_phonetic(word):
             # If Enchant only returns one suggestion, we use that
             if len(potentials) == 1:
                 logging.warning('Reading \"%s\" as \"%s\"', word, potentials[0])
-                phonetic = cmu_dict(potentials[0])
-                syllabified = syllable_dict(potentials[0])
+                pronunciations = phonetic_dict(potentials[0])
             # If we get multiple suggestions, use Levenshtein distance to select the closest.
             elif len(potentials) > 1:
                 distances = {}
@@ -56,82 +61,14 @@ def get_phonetic(word):
                     distances[suggestion] = distance(suggestion, word)
                 best_match = min(distances, key=distances.get)
                 logging.warning('Reading \"%s\" as \"%s\".', word, best_match)
-                phonetic = cmu_dict(best_match)
-                syllabified = syllable_dict(best_match)
+                pronunciations = phonetic_dict(best_match)
             # If PyEnchant returns an empty list of suggestions then log that.
             else:
                 logging.error('Found no valid suggestions for \"%s\".', word)
         except KeyError:
             logging.error('KeyError attempting to resolve \"%s\".', word)
 
-    return phonetic, syllabified
-
-
-# Attempts to extract rhymelike features from a list of pronunciations and a list of syllabified pronunciations.
-def get_rhymes(pronunciations, syl_pronunciations):
-    p_rhymes = []
-    word_init_consonants = []
-    stressed_vowels = []
-    stress_initial_consonants = []
-    stress_final_consonants = []
-    stress_bracket_consonants = []
-
-    # Obtains word-initial consonant sounds,
-    # Note: currently words without stress are ignored for stress-relative features.
-    for pronunciation in syl_pronunciations:
-        stressed_syllable = ''
-
-        match = re.search('^[\w]{1,2}(?=[\w\s]+[a-zA-Z]{2}[0-2])', pronunciation)
-        # Old search for all init consonants: match = re.search('^[\w\s]+(?=[a-zA-Z]{2}[0-2])', pronunciation)
-        if match:
-            word_init_consonants.append(match.group(0).strip())
-
-        match = re.search('[\w\s]*1[\w\s]*', pronunciation)
-        if match:
-            stressed_syllable = match.group(0).strip()
-
-        match = re.search('[a-zA-Z]{2}(?=1)', stressed_syllable)
-        if match:
-            stressed_vowels.append(match.group(0).strip())
-
-        match = re.search("[\w]{1,2}(?=[\w\s]+[a-zA-Z]{2}1)", stressed_syllable)
-        # Old search for all init consonants: match = re.search("[\w\s]+(?=[a-zA-Z]{2}1)", stressed_syllable)
-        if match:
-            stress_initial_consonants.append(match.group(0).strip())
-
-        match = re.search("(?<=[a-zA-Z]{2}1)[\w\s]+", stressed_syllable)
-        if match:
-            # Split is necessary to get only the last sound because you can't use repetition in Lookbehinds.
-            # Without split, we get all consonants after the vowel in the stressed syllable.
-            split = match.group(0).split(' ')
-            stress_final_consonants.append(split[-1].strip())
-
-    # Iterates through the pronunciations provided to extract perfect rhymes
-    for index, pronunciation in enumerate(pronunciations):
-        joined = ' '.join(pronunciations[index])
-        first_stress = re.search("[a-zA-Z]{1,2}1[\w|\s]*", joined)
-        # Deals with pronunciations ostensibly without stress (ie: some pronunciations of 'the') to provide their rhyme
-        if not first_stress:
-            first_stress = re.search("[a-zA-Z]{1,2}0[\w|\s]*", joined)
-        # If we found a rhyme, add it to our list of rhymes
-        if first_stress:
-            p_rhymes.append(first_stress.group(0))
-
-    # As long as we have a nonzero number of initials, and the same number of finals, create consonant brackets.
-    if stress_initial_consonants and len(stress_initial_consonants) == len(stress_final_consonants):
-        for index, consonant in enumerate(stress_initial_consonants):
-            stress_bracket_consonants.append(consonant + ' ' + stress_final_consonants[index])
-
-    # Set and back to remove duplicates
-    p_rhymes = list(set(p_rhymes))
-    word_init_consonants = list(set(word_init_consonants))
-    stressed_vowels = list(set(stressed_vowels))
-    stress_initial_consonants = list(set(stress_initial_consonants))
-    stress_final_consonants = list(set(stress_final_consonants))
-    stress_bracket_consonants = list(set(stress_bracket_consonants))
-
-    return (p_rhymes, word_init_consonants, stressed_vowels, stress_initial_consonants, stress_final_consonants,
-            stress_bracket_consonants)
+    return pronunciations
 
 
 # Tries to return the name of a rhyme pattern.
@@ -216,6 +153,7 @@ def name_meter(pattern):
         return 'unrecognized', 'meter'
 
 
+# Future: Internal rhyme patterns, word repetitions, caesura, specific rhyme types, and refrains.
 def name_stanza(rhyme_scheme, line_lengths, meters, line_count):
     # If all lines are the same length, set line_lengths to that one length.
     if len(set(line_lengths)) == 1:
