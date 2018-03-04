@@ -16,7 +16,9 @@ poem.get_rhymes()
 poem.get_sonic_features()
 poem.get_pos()
 poem.get_scansion()
-poem.get_meter_v_scan()
 poem.get_meter()
+poem.get_meter_v_scan()
 poem.get_form()
 poem.record()
+
+
