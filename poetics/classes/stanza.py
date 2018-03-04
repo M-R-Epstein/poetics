@@ -1,91 +1,86 @@
-import logging
-from collections import OrderedDict
-
-from poetics.conversions import tokenize, get_sound_set_groups
+from poetics.conversions import get_sound_set_groups, feats_to_scheme
 from poetics.logging import print_sound_set
-from poetics.patterning import assign_letters_to_dict
 from poetics.lookups import name_stanza
 
 
 class Stanza:
-    def __init__(self, text, parent=None):
+    def __init__(self, tokens, lines, parent=None):
         self.parent = parent
-        self.plaintext = text
-        self.tokenized_text = tokenize(text)
-        self.word_indexes = ()
+        self.tokens = tokens
+        self.word_tokens = [token for token in tokens if not token.is_punct and not token.is_wspace]
+        self.lines = lines
 
-        self.lines = []
-        self.line_count = []
         self.line_lengths = []
         self.meters = None
         self.form = None
 
-        self.line_rhymes = []
-        self.rhyme_scheme = None
-        self.line_asso = []
-        self.asso_scheme = None
-        self.line_cons = []
-        self.cons_scheme = None
-        self.line_i_rhymes = []
-        self.i_rhyme_scheme = None
+        # Final rhyme types.
+        self.scm_p_rhymes = None
+        self.scm_r_rhymes = None
+        self.scm_asso = None
+        self.scm_cons = None
+        self.scm_bkt_cons = None
+        self.scm_str_allit = None
+        self.scm_ini_allit = None
+        # Init rhyme types.
+        self.scm_i_p_rhymes = None
+        self.scm_i_r_rhymes = None
+        self.scm_i_asso = None
+        self.scm_i_cons = None
+        self.scm_i_bkt_cons = None
+        self.scm_i_str_allit = None
+        self.scm_i_ini_allit = None
 
-        self.word_init_consonants = []
-        self.alliteration = None
-
-        self.stressed_vowels = []
-        self.assonance = None
-
-        self.stress_init_consonants = []
-        self.str_alliteration = None
-
-        self.stress_final_consonants = []
-        self.consonance = None
-
-        self.stress_bracket_consonants = []
-        self.brct_consonance = None
+        self.asso = None
+        self.cons = None
+        self.bkt_cons = None
+        self.str_allit = None
+        self.ini_allit = None
 
     def get_rhymes(self):
-        for line in self.lines:
-            self.line_rhymes.append(line.rhyme)
-            self.line_asso.append(line.assonance)
-            self.line_cons.append(line.consonance)
-            self.line_i_rhymes.append(line.i_rhyme)
+        rhyme_features = ['p_rhyme', 'r_rhyme', 'str_vowel', 'str_fin_con', 'str_bkt_cons', 'str_ini_con',
+                          'word_ini_con']
+        for feature in rhyme_features:
+            scm = feats_to_scheme([getattr(line.final_word.pronunciations[0], feature) for line in self.lines], True)
+            iscm = feats_to_scheme([getattr(line.initial_word.pronunciations[0], feature) for line in self.lines], True)
+            setattr(self, 'scm_' + feature, scm)
+            setattr(self, 'scm_i_' + feature, iscm)
 
-        # Creates ordered dicts of unique feature appearances.
-        rhyme_order = OrderedDict.fromkeys(self.line_rhymes)
-        asso_order = OrderedDict.fromkeys(self.line_asso)
-        cons_order = OrderedDict.fromkeys(self.line_cons)
-        i_rhyme_order = OrderedDict.fromkeys(self.line_i_rhymes)
 
-        # Assigns letters to the ordered dicts.
-        rhyme_order = assign_letters_to_dict(rhyme_order, True)
-        asso_order = assign_letters_to_dict(asso_order, True)
-        cons_order = assign_letters_to_dict(cons_order, True)
-        i_rhyme_order = assign_letters_to_dict(i_rhyme_order, True)
 
-        # Sets rhyme scheme to the appropriate sequence of letters.
-        self.rhyme_scheme = ''.join([rhyme_order[rhyme] for rhyme in self.line_rhymes])
-        self.asso_scheme = ''.join([asso_order[asso] for asso in self.line_asso])
-        self.cons_scheme = ''.join([cons_order[cons] for cons in self.line_cons])
-        self.i_rhyme_scheme = ''.join([i_rhyme_order[i_rhyme] for i_rhyme in self.line_i_rhymes])
+        # self.scm_p_rhymes = feats_to_scheme([line.final_word.pronunciations[0].p_rhyme for line in self.lines],
+        #                                     True, False)
+        # self.scm_r_rhymes = feats_to_scheme([line.final_word.pronunciations[0].r_rhyme for line in self.lines],
+        #                                     True, False)
+        # self.scm_asso = feats_to_scheme([line.final_word.pronunciations[0].str_vowel for line in self.lines],
+        #                                 True, False)
+        # self.scm_cons = feats_to_scheme([line.final_word.pronunciations[0].str_fin_con for line in self.lines],
+        #                                 True, False)
+        # self.scm_bkt_cons = feats_to_scheme([line.final_word.pronunciations[0].str_bkt_cons for line in self.lines],
+        #                                     True, False)
+        # self.scm_str_allit = feats_to_scheme([line.final_word.pronunciations[0].str_ini_con for line in self.lines],
+        #                                      True, False)
+        # self.scm_ini_allit = feats_to_scheme([line.final_word.pronunciations[0].word_ini_con for line in self.lines],
+        #                                      True, False)
+        # self.scm_i_p_rhymes = feats_to_scheme([line.initial_word.pronunciations[0].p_rhyme for line in self.lines],
+        #                                       True, False)
+        # self.scm_i_r_rhymes = feats_to_scheme([line.initial_word.pronunciations[0].r_rhyme for line in self.lines],
+        #                                       True, False)
+        # self.scm_i_asso = feats_to_scheme([line.initial_word.pronunciations[0].str_vowel for line in self.lines],
+        #                                   True, False)
+        # self.scm_i_cons = feats_to_scheme([line.initial_word.pronunciations[0].str_fin_con for line in self.lines],
+        #                                   True, False)
+        # self.scm_i_bkt_cons = feats_to_scheme([line.initial_word.pronunciations[0].str_bkt_cons for line in self.lines],
+        #                                       True, False)
+        # self.scm_i_str_allit = feats_to_scheme([line.initial_word.pronunciations[0].str_ini_con for line in self.lines],
+        #                                        True, False)
+        # self.scm_i_ini_allit = feats_to_scheme([line.initial_word.pronunciations[0].word_ini_con for line in self.lines],
+        #                                        True, False)
 
     def get_form(self):
-        # If we haven't generated scansion yet, warn the user and do so.
-        if not self.parent.scans:
-            logging.warning("Scansion required for form identification. Generating scansion...")
-            self.parent.get_scansion()
-        # If we haven't generated rhyme yet, warn the user and do so.
-        if not self.line_rhymes:
-            logging.warning("Rhyme required for form identification. Generating rhymes...")
-            self.parent.get_rhymes()
-        # If we haven't generated meter yet, warn the user and do so.
-        if not self.parent.meters:
-            logging.warning("Meter required for form identification. Generating meter...")
-            self.parent.get_meter()
-
         # Create a list of syllables per line.
         for line in self.lines:
-            self.line_lengths.append(str(len(''.join(line.final_scansion))))
+            self.line_lengths.append(str(line.syllables))
         # If they are all the same length, we only need the one meter.
         if len(set(self.line_lengths)) == 1:
             self.meters = [meter for length, (meter, repetitions, name) in self.parent.meters.items()
@@ -96,36 +91,36 @@ class Stanza:
             for length in self.line_lengths:
                 meter_list.append(self.parent.meters[int(length)][0])
             self.meters = ' '.join(meter_list)
-            print(self.meters)
-        self.form = name_stanza(self.rhyme_scheme, self.line_lengths, self.meters, self.line_count)
+        self.form = name_stanza(self.scm_p_rhymes, self.line_lengths, self.meters, len(self.lines))
 
     def get_sonic_features(self):
-        # Get all relevant word features for words in stanza.
-        if self.tokenized_text and self.parent:
-            # Retrieve lists of sounds from word objects.
-            for word in self.tokenized_text:
-                self.word_init_consonants.append(self.parent.words[word].word_init_consonants)
-                self.stressed_vowels.append(self.parent.words[word].stressed_vowels)
-                self.stress_init_consonants.append(self.parent.words[word].stress_initial_consonants)
-                self.stress_final_consonants.append(self.parent.words[word].stress_final_consonants)
-                self.stress_bracket_consonants.append(self.parent.words[word].stress_bracket_consonants)
+        asso_list, cons_list, bkt_cons_list, str_allit_list, ini_allit_list = [], [], [], [], []
+        # Retrieve lists of sounds from word objects.
+        for token in self.word_tokens:
+            asso_list.append(list(set([pro.str_vowel for pro in token.pronunciations if pro.str_vowel])))
+            cons_list.append(list(set([pro.str_fin_con for pro in token.pronunciations if pro.str_fin_con])))
+            bkt_cons_list.append(list(set([pro.str_bkt_cons for pro in token.pronunciations if pro.str_bkt_cons])))
+            str_allit_list.append(list(set([pro.str_ini_con for pro in token.pronunciations if pro.str_ini_con])))
+            ini_allit_list.append(list(set([pro.word_ini_con for pro in token.pronunciations if pro.word_ini_con])))
 
         # Get feature groups for rhyme-like features
+        tokens = [token.token for token in self.word_tokens]
         max_distance = max(self.parent.avg_words_per_line, 5)
-        self.alliteration = get_sound_set_groups(self.word_init_consonants, self.tokenized_text, max_distance)
-        self.assonance = get_sound_set_groups(self.stressed_vowels, self.tokenized_text, max_distance)
-        self.str_alliteration = get_sound_set_groups(self.stress_init_consonants, self.tokenized_text, max_distance)
-        self.consonance = get_sound_set_groups(self.stress_final_consonants, self.tokenized_text, max_distance)
-        self.brct_consonance = get_sound_set_groups(self.stress_bracket_consonants, self.tokenized_text, max_distance)
+        self.asso = get_sound_set_groups(asso_list, tokens, max_distance)
+        self.cons = get_sound_set_groups(cons_list, tokens, max_distance)
+        self.bkt_cons = get_sound_set_groups(bkt_cons_list, tokens, max_distance)
+        self.str_allit = get_sound_set_groups(str_allit_list, tokens, max_distance)
+        self.ini_allit = get_sound_set_groups(ini_allit_list, tokens, max_distance)
 
     def print_sonic_features(self):
-        if self.alliteration:
-            print_sound_set('Alliteration', self.alliteration, self.tokenized_text)
-        if self.str_alliteration:
-            print_sound_set('Stressed Alliteration', self.str_alliteration, self.tokenized_text)
-        if self.assonance:
-            print_sound_set('Assonance', self.assonance, self.tokenized_text)
-        if self.consonance:
-            print_sound_set('Consonance', self.consonance, self.tokenized_text)
-        if self.brct_consonance:
-            print_sound_set('Bracket Consonance', self.brct_consonance, self.tokenized_text)
+        tokens = [token.token for token in self.word_tokens]
+        if self.asso:
+            print_sound_set('Assonance', self.asso, tokens)
+        if self.cons:
+            print_sound_set('Consonance', self.cons, tokens)
+        if self.bkt_cons:
+            print_sound_set('Bracket Consonance', self.bkt_cons, tokens)
+        if self.str_allit:
+            print_sound_set('Stressed Alliteration', self.str_allit, tokens)
+        if self.ini_allit:
+            print_sound_set('Alliteration', self.ini_allit, tokens)

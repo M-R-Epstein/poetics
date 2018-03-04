@@ -2,49 +2,42 @@ import logging
 import re
 
 import poetics.config as config
-from poetics.conversions import tokenize
 
 
 class Sentence:
-    def __init__(self, text, parent=None):
+    def __init__(self, tokens, parent=None):
         self.parent = parent
-        self.plaintext = text
-        self.tokenized_text = tokenize(text)
-        self.word_indexes = ()
-
-        self.pos = []
+        self.tokens = tokens
+        self.word_tokens = [token for token in tokens if not token.is_punct and not token.is_wspace]
 
     def get_pos(self):
+        text = ''.join([token.token for token in self.tokens]).replace('\n', ' ')
+        sentence = config.spacy_model(text)
+        tuple_pos_list = [(token.text, token.tag_) for token in sentence if not token.is_punct]
         # Attempts to match pos tags to word tokens.
-        def match_pos_to_tokens(token_list, tag_list):
-            index = 0
-            cap = len(token_list)
-            # If we don't find a match for one of the keys in tag_list, then we try to match the next key to the token.
-            for index2, (key, value) in enumerate(tag_list):
-                if index < cap:
-                    # If the key matches the token, we're good.
-                    if key == token_list[index]:
-                        yield value
-                        index += 1
-                    else:
-                        # If not, check if the key is in the token (accounts for possessives and stuff).
-                        match = re.match(key, token_list[index])
-                        if match:
-                            yield value
-                            index += 1
-                        match = re.match(token_list[index], key)
-                        if match:
-                            yield value
-                            index += 1
-
-        if not self.pos:
-            if self.plaintext:
-                sentence = config.spacy_model(self.plaintext)
-                tuple_pos_list = [(token.text, token.tag_) for token in sentence if not token.is_punct]
-                pos_list = [tag for tag in match_pos_to_tokens(self.tokenized_text, tuple_pos_list)]
-                if len(pos_list) == len(self.tokenized_text):
-                    self.pos = pos_list
+        index = 0
+        cap = len(self.word_tokens)
+        # If we don't find a match for one of the keys in tag_list, then we try to match the next key to the token.
+        for index2, (key, value) in enumerate(tuple_pos_list):
+            if index < cap:
+                # If the key matches the token, we're good.
+                if key == self.word_tokens[index].token:
+                    self.word_tokens[index].pos = value
+                    self.word_tokens[index].simple_pos = config.short_pos_dict[value]
+                    index += 1
                 else:
-                    logging.error("Failure matching part of speech tags to tokens for %s:\n%s", self, self.plaintext)
-
-        return self.pos
+                    # If not, check if the key is in the token (accounts for possessives and stuff).
+                    match = re.match(key, self.word_tokens[index].token)
+                    if match:
+                        self.word_tokens[index].pos = value
+                        self.word_tokens[index].simple_pos = config.short_pos_dict[value]
+                        index += 1
+                    match = re.match(self.word_tokens[index].token, key)
+                    if match:
+                        self.word_tokens[index].pos = value
+                        self.word_tokens[index].simple_pos = config.short_pos_dict[value]
+                        index += 1
+        # If we failed to find a pos tag for any token, log that.
+        no_match = [token.token for token in self.word_tokens if not token.pos]
+        if no_match:
+            logging.error("Failure matching part of speech tags to tokens for %s:\n%s", self, no_match)
