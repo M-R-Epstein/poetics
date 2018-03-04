@@ -1,133 +1,115 @@
 import csv
 import logging
 import re
-from collections import Counter
-from collections import OrderedDict
-
-from nltk import tokenize
 
 from poetics import config as config
 from poetics.classes.line import Line
 from poetics.classes.sentence import Sentence
 from poetics.classes.stanza import Stanza
+from poetics.classes.token import Token
 from poetics.classes.word import Word
-from poetics.conversions import convert_pos
-from poetics.logging import tags_with_text, convert_scansion, header1, header2, join_list_proper
+from poetics.conversions import tokenize, full_tokenize, feats_to_scheme, title_case
+from poetics.logging import tags_with_text, convert_scansion, header1, header1d, header2, join_list_proper
 from poetics.lookups import name_meter, name_poem
-from poetics.patterning import check_meters, predict_scan, resolve_rhyme, assign_letters_to_dict, pattern_match_ratio
+from poetics.patterning import check_meters, predict_scan, pattern_match_ratio, check_for_words, \
+    maximize_token_matches
 
 
 class Poem:
     def __init__(self, text, title='Unknown Poem', author='Unknown'):
-
-        self.title = title
-        self.author = author
+        self.title = title_case(title)
+        self.author = title_case(author)
         self.form = None
 
-        self.stanzas = []
-        self.stanza_indexes = []
-
-        self.lines = []
-        self.line_indexes = []
-        self.avg_words_per_line = 0
-
-        self.sentences = []
-
         self.words = {}
-        self.wordlist = []
         self.unrecognized_words = []
         self.provided_pronunciations = {}
 
-        self.rhyme_scheme = None
-        self.asso_scheme = None
-        self.cons_scheme = None
-        self.i_rhyme_scheme = None
+        self.tokens = []
+        self.word_tokens = []
+        self.lines = []
+        self.avg_words_per_line = None
+        self.sentences = []
+        self.stanzas = []
 
         self.lines_by_syllable = {}
         self.scans = {}
         self.meters = {}
 
-        self.pos_count = Counter()
-        self.simple_pos_count = Counter()
+        # Final rhyme types.
+        self.scm_p_rhymes = None
+        self.scm_r_rhymes = None
+        self.scm_asso = None
+        self.scm_cons = None
+        self.scm_bkt_cons = None
+        self.scm_str_allit = None
+        self.scm_ini_allit = None
+        # Init rhyme types.
+        self.scm_i_p_rhymes = None
+        self.scm_i_r_rhymes = None
+        self.scm_i_asso = None
+        self.scm_i_cons = None
+        self.scm_i_bkt_cons = None
+        self.scm_i_str_allit = None
+        self.scm_i_ini_allit = None
+
+        self.got_rhyme = False
+        self.got_pos = False
+        self.got_scansion = False
+        self.got_meter = False
+
+        # Log title of poem and author
+        header1d(self.title, self.author)
 
         # Loop through lines of the text checking to see if any of them have a pronunciation provided.
         for index, line in enumerate(text):
             found_pronunciations = re.findall("[\w\']+{[A-Z0-9\s-]+}", line)
             for pronunciation in found_pronunciations:
-                split = pronunciation.split("{")
-                pronunciation = [split[1].replace('}', '')]
+                split = pronunciation.split('{')
+                pronunciation = split[1].replace('}', '')
                 self.provided_pronunciations[split[0]] = pronunciation
             if found_pronunciations:
                 text[index] = re.sub("{[A-Z0-9\s-]+}", "", text[index])
 
-        # Creates Line objects for each line.
-        for index, line in enumerate(text):
-            self.lines.append(Line(line, self))
-        # Create word indexes for passing information between lines/stanzas/sentences, also assigns line numbers.
-        wordcount = 0
-        index_mod = 1
-        for index, line in enumerate(self.lines):
-            length = len(line.tokenized_text)
-            if length == 0:
-                index_mod -= 1
-            else:
-                line.line_num = index + index_mod
-            # Tracks minimum bound for current line.
-            if line.tokenized_text:
-                min_index = wordcount + 1
-            else:
-                min_index = wordcount
-            # Finds upper bound of line by adding the length of the current line to the existing wordcount.
-            wordcount += length
-            line.word_indexes = (min_index, wordcount)
-            self.line_indexes.append(line.word_indexes)
-        # Get a list of the number of words per line, ignoring lines without any tokenized text, and then an average.
-        line_lengths = [len(line.tokenized_text) for line in self.lines if line.tokenized_text]
-        self.avg_words_per_line = round(sum(line_lengths) / len(line_lengths))
-
-        # Splits full text into stanzas based on blank lines.
-        stanza_text = re.split('\n\s*[\n]+', ''.join(text))
-        # Creates Stanza objects for each stanza.
-        for stanza in stanza_text:
-            self.stanzas.append(Stanza(stanza, self))
-        # Create word indexes for passing information between lines/stanzas/sentences.
-        wordcount = 0
-        for stanza in self.stanzas:
-            min_index = wordcount + 1
-            wordcount += len(stanza.tokenized_text)
-            stanza.word_indexes = (min_index, wordcount)
-            self.stanza_indexes.append(stanza.word_indexes)
-            stanza.lines = [line for line in self.lines if
-                            stanza.word_indexes[0] <= line.word_indexes[0] < line.word_indexes[1] <=
-                            stanza.word_indexes[1]]
-            stanza.line_count = len(stanza.lines)
-
-        # Creates fully joined text w/o linebreaks.
-        joined_text = re.sub('\n', '', ' '.join(text))
-        # Uses NLTK tokenizer to split joined text into sentences.
-        sentence_text = tokenize.sent_tokenize(joined_text)
-        # Creates a Sentence object for each sentence.
-        for sentence in sentence_text:
-            self.sentences.append(Sentence(sentence, self))
-        # Create word indexes for passing information between lines/stanzas/sentences.
-        wordcount = 0
-        for sentence in self.sentences:
-            min_index = wordcount + 1
-            wordcount += len(sentence.tokenized_text)
-            sentence.word_indexes = (min_index, wordcount)
-
-        # List comprehension to pull out words from lines. Turns the list into a set and then back to remove duplicates.
-        self.wordlist = list(set([
-            self.lines[index].tokenized_text[index2] for index, line in enumerate(self.lines)
-            if self.lines[index].tokenized_text
-            for index2, word in enumerate(self.lines[index].tokenized_text)]))
+        # Gets word tokens.
+        dict_tokens = [token for token in set(tokenize(''.join(text)))]
         # Creates a dictionary of words for which the value corresponding to each word string (key) is the object
         # representing that word with the poem as parent. Assigns pronunciation if one was provided in the text.
-        for word in self.wordlist:
+        for word in dict_tokens:
             if word in self.provided_pronunciations:
                 self.words[word] = Word(word, self.provided_pronunciations[word], self)
             else:
                 self.words[word] = Word(word, parent=self)
+
+        # Break the text into tokens (including spaces and punctuation), and get token indexes for lines, sentences
+        # and stanzas.
+        tokens, line_indexes, sentence_indexes, stanza_indexes = full_tokenize(''.join(text))
+        # Create a Token object for each token, Line object for each line, Sentence object for each sentence, and
+        # Stanza object for each stanza.
+        line_num = 1
+        for index, token in enumerate(tokens):
+            self.tokens.append(Token(token, index, self))
+            self.word_tokens = [token for token in self.tokens if not token.is_punct and not token.is_wspace]
+        for start, stop in line_indexes:
+            # Deals with numbering lines.
+            if check_for_words(self.tokens[start:stop]):
+                self.lines.append(Line(self.tokens[start:stop], line_num, self))
+                line_num += 1
+            else:
+                self.lines.append(Line(self.tokens[start:stop], None, self))
+        for start, stop in sentence_indexes:
+            self.sentences.append(Sentence(self.tokens[start:stop + 1], self))
+        for start, stop in stanza_indexes:
+            # Assigns the correct lines to the correct stanzas.
+            lines = [index for index, (start2, stop2) in enumerate(line_indexes) if start2 >= start and stop2 <= stop]
+            self.stanzas.append(Stanza(self.tokens[start:stop], [self.lines[index] for index in lines], self))
+
+        # Gets average words per line.
+        words_per_line = []
+        for line in self.lines:
+            if not line.is_blank:
+                words_per_line.append(len(line.word_tokens))
+        self.avg_words_per_line = sum(words_per_line) // len(words_per_line)
 
         # Find words that failed to find pronunciations during their init, add them to unrecognized_words.
         for word in self.words:
@@ -135,104 +117,138 @@ class Poem:
                 self.unrecognized_words.append(word)
         # Logs unrecognized words if any were found.
         if len(self.unrecognized_words) > 0:
-            logging.warning("Unrecognized words: %s", ", ".join(self.unrecognized_words))
+            logging.error("Unrecognized words: %s", ", ".join(self.unrecognized_words))
 
     def get_rhymes(self):
         # If we don't have a rhyming scheme, figure one out
-        if not self.rhyme_scheme:
-            # Get the rhyme candidates for each line
-            for line in self.lines:
-                line.get_rhymes()
-
-            # List of rhymes with multiple rhyme candidates.
-            multi_feature_lines = [line for line in self.lines if len(line.rhyme_candidates) > 1]
-            # Figure out the best rhymes for each line.
-            for line in multi_feature_lines:
-                line.rhyme = resolve_rhyme(line.rhyme_candidates,
-                                           # Counter of the rhymes for lines that only had one candidate.
-                                           Counter([line.rhyme for line in self.lines if line.rhyme]),
-                                           # Counter of the appearances of rhymes in lines with multiple candidates.
-                                           Counter(c for line in multi_feature_lines for c in line.rhyme_candidates))
-            # Assonance.
-            multi_feature_lines = [line for line in self.lines if len(line.asso_candidates) > 1]
-            for line in multi_feature_lines:
-                line.assonance = resolve_rhyme(line.asso_candidates,
-                                               Counter([line.assonance for line in self.lines if line.assonance]),
-                                               Counter(c for line in multi_feature_lines for c in line.asso_candidates))
-            # Consonance
-            multi_feature_lines = [line for line in self.lines if len(line.cons_candidates) > 1]
-            for line in multi_feature_lines:
-                line.consonance = resolve_rhyme(line.con_candidates,
-                                                Counter([line.consonance for line in self.lines if line.consonance]),
-                                                Counter(
-                                                    c for line in multi_feature_lines for c in line.cons_candidates))
-            # Head rhyme
-            multi_feature_lines = [line for line in self.lines if len(line.i_rhyme_candidates) > 1]
-            for line in multi_feature_lines:
-                line.i_rhyme = resolve_rhyme(line.i_rhyme_candidates,
-                                             Counter([line.i_rhyme for line in self.lines if line.i_rhyme]),
-                                             Counter(
-                                                 c for line in multi_feature_lines for c in line.i_rhyme_candidates))
-
+        if not self.scm_p_rhymes:
+            # Have final/initial words in each line cull pronunciations based on maximizing rhyme/assonance/etc.
+            final_words = [line.final_word for line in self.lines if not line.is_blank]
+            init_words = [line.initial_word for line in self.lines if not line.is_blank]
+            maximize_features = ['p_rhyme', 'r_rhyme', 'str_vowel', 'str_fin_con', 'str_ini_con', 'word_ini_con',
+                                 'str_bkt_cons']
+            for feature in maximize_features:
+                maximize_token_matches(final_words, feature)
+                maximize_token_matches(init_words, feature)
+            # Have stanzas get rhyme schemes.
             for stanza in self.stanzas:
                 stanza.get_rhymes()
-
-            # Creates ordered dicts of unique feature appearances.
-            rhyme_order = OrderedDict.fromkeys(line.rhyme for line in self.lines if line.rhyme)
-            asso_order = OrderedDict.fromkeys(line.assonance for line in self.lines if line.assonance)
-            cons_order = OrderedDict.fromkeys(line.consonance for line in self.lines if line.consonance)
-            i_rhyme_order = OrderedDict.fromkeys(line.i_rhyme for line in self.lines if line.i_rhyme)
-
-            # Check if all of the lines have consonance.
-            missing_consonance = False
-            for line in self.lines:
-                if line.tokenized_text and not line.consonance:
-                    missing_consonance = True
-
             # Uses half the number of lines +1 to set the max number of unique features for a feature to count as
             # having some kind of pattern. So, for example, a 16 or 15 line poem would need no more than 8 rhymes.
-            max_sets = ((len(self.lines) // 2) + 1)
-            # Assigns letters to the ordered dicts.
-            rhyme_order = assign_letters_to_dict(rhyme_order)
-            # Sets rhyme scheme to the appropriate sequence of letters.
-            self.rhyme_scheme = ''.join([' ' if not line.rhyme else rhyme_order[line.rhyme] for line in self.lines])
-            if not len(asso_order) > max_sets:
-                asso_order = assign_letters_to_dict(asso_order)
-                self.asso_scheme = ''.join(
-                    [' ' if not line.assonance else asso_order[line.assonance] for line in self.lines])
-            if not len(cons_order) > max_sets and not missing_consonance:
-                cons_order = assign_letters_to_dict(cons_order)
-                self.cons_scheme = ''.join(
-                    [' ' if not line.consonance else cons_order[line.consonance] for line in self.lines])
-            if not len(i_rhyme_order) > max_sets:
-                i_rhyme_order = assign_letters_to_dict(i_rhyme_order)
-                self.i_rhyme_scheme = ''.join(
-                    [' ' if not line.i_rhyme else i_rhyme_order[line.i_rhyme] for line in self.lines])
+            max_sets = ((len([line for line in self.lines if not line.is_blank]) // 2) + 1)
+            # Gets rhyming schemes.
+            self.scm_p_rhymes = feats_to_scheme([' ' if line.is_blank else line.final_word.pronunciations[0].p_rhyme
+                                                 for line in self.lines], False, True, max_sets)
+            self.scm_r_rhymes = feats_to_scheme([' ' if line.is_blank else line.final_word.pronunciations[0].r_rhyme
+                                                 for line in self.lines], False, True, max_sets)
+            self.scm_asso = feats_to_scheme([' ' if line.is_blank else line.final_word.pronunciations[0].str_vowel
+                                             for line in self.lines], False, True, max_sets)
+            self.scm_cons = feats_to_scheme([' ' if line.is_blank else line.final_word.pronunciations[0].str_fin_con
+                                             for line in self.lines], False, False, max_sets)
+            self.scm_bkt_cons = feats_to_scheme([' ' if line.is_blank
+                                                 else line.final_word.pronunciations[0].str_bkt_cons
+                                                 for line in self.lines], False, False, max_sets)
+            self.scm_str_allit = feats_to_scheme([' ' if line.is_blank
+                                                  else line.final_word.pronunciations[0].str_ini_con
+                                                  for line in self.lines], False, False, max_sets)
+            self.scm_ini_allit = feats_to_scheme([' ' if line.is_blank else
+                                                  line.final_word.pronunciations[0].word_ini_con
+                                                  for line in self.lines], False, False, max_sets)
+            self.scm_i_p_rhymes = feats_to_scheme([' ' if line.is_blank else line.initial_word.pronunciations[0].p_rhyme
+                                                   for line in self.lines], False, True, max_sets)
+            self.scm_i_r_rhymes = feats_to_scheme([' ' if line.is_blank else line.initial_word.pronunciations[0].r_rhyme
+                                                   for line in self.lines], False, True, max_sets)
+            self.scm_i_asso = feats_to_scheme([' ' if line.is_blank else line.initial_word.pronunciations[0].str_vowel
+                                               for line in self.lines], False, True, max_sets)
+            self.scm_i_cons = feats_to_scheme([' ' if line.is_blank else line.initial_word.pronunciations[0].str_fin_con
+                                               for line in self.lines], False, False, max_sets)
+            self.scm_i_bkt_cons = feats_to_scheme([' ' if line.is_blank
+                                                   else line.initial_word.pronunciations[0].str_bkt_cons
+                                                   for line in self.lines], False, False, max_sets)
+            self.scm_i_str_allit = feats_to_scheme([' ' if line.is_blank
+                                                    else line.initial_word.pronunciations[0].str_ini_con
+                                                    for line in self.lines], False, False, max_sets)
+            self.scm_i_ini_allit = feats_to_scheme([' ' if line.is_blank
+                                                    else line.initial_word.pronunciations[0].word_ini_con
+                                                    for line in self.lines], False, False, max_sets)
 
-        # Log the rhyming scheme if we have one.
+        # Log the highest priority scheme (rich rhyme, perfect rhyme, assonance, bracket consonance, consonance,
+        # alliteration, word-initial alliteration).
         header2("Rhyme")
-        if self.rhyme_scheme:
-            logging.info("Rhyming Scheme: %s", self.rhyme_scheme)
-            stanza_scheme = [stanza.rhyme_scheme for stanza in self.stanzas if stanza.rhyme_scheme]
+        if self.scm_r_rhymes:
+            logging.info("Rich Rhyming Scheme: %s", self.scm_r_rhymes)
+            stanza_scheme = [stanza.scm_r_rhymes for stanza in self.stanzas if stanza.scm_r_rhymes]
             if len(stanza_scheme) > 1:
-                logging.info("Stanza Rhyming Schemes: %s", ', '.join(stanza_scheme))
-        # Try assonance scheme and then consonance scheme if we didn't.
-        elif self.asso_scheme:
-            logging.info("Assonance Scheme: %s", self.asso_scheme)
-            stanza_scheme = [stanza.asso_scheme for stanza in self.stanzas if stanza.asso_scheme]
+                logging.info("Stanza Rich Rhyming Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_p_rhymes:
+            logging.info("Perfect Rhyming Scheme: %s", self.scm_p_rhymes)
+            stanza_scheme = [stanza.scm_p_rhymes for stanza in self.stanzas if stanza.scm_p_rhymes]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Perfect Rhyming Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_asso:
+            logging.info("Assonance Scheme: %s", self.scm_asso)
+            stanza_scheme = [stanza.scm_asso for stanza in self.stanzas if stanza.scm_asso]
             if len(stanza_scheme) > 1:
                 logging.info("Stanza Assonance Schemes: %s", ', '.join(stanza_scheme))
-        elif self.cons_scheme:
-            logging.info("Consonance Scheme: %s", self.cons_scheme)
-            stanza_scheme = [stanza.cons_scheme for stanza in self.stanzas if stanza.cons_scheme]
+        elif self.scm_bkt_cons:
+            logging.info("Bracket Consonance Scheme: %s", self.scm_bkt_cons)
+            stanza_scheme = [stanza.scm_bkt_cons for stanza in self.stanzas if stanza.scm_bkt_cons]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Bracket Consonance Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_cons:
+            logging.info("Consonance Scheme: %s", self.scm_cons)
+            stanza_scheme = [stanza.scm_cons for stanza in self.stanzas if stanza.scm_cons]
             if len(stanza_scheme) > 1:
                 logging.info("Stanza Consonance Schemes: %s", ', '.join(stanza_scheme))
-        # Print line initial rhyme scheme if we got one.
-        if self.i_rhyme_scheme:
-            logging.info("Head Rhyming Scheme: %s", self.i_rhyme_scheme)
-            stanza_scheme = [stanza.i_rhyme_scheme for stanza in self.stanzas if stanza.i_rhyme_scheme]
+        elif self.scm_str_allit:
+            logging.info("Alliteration Scheme: %s", self.scm_str_allit)
+            stanza_scheme = [stanza.scm_str_allit for stanza in self.stanzas if stanza.scm_str_allit]
             if len(stanza_scheme) > 1:
-                logging.info("Stanza Head Rhyming Schemes: %s", ', '.join(stanza_scheme))
+                logging.info("Stanza Alliteration Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_ini_allit:
+            logging.info("Word Initial Alliteration Scheme: %s", self.scm_ini_allit)
+            stanza_scheme = [stanza.scm_ini_allit for stanza in self.stanzas if stanza.scm_ini_allit]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Word Initial Alliteration Schemes: %s", ', '.join(stanza_scheme))
+
+        # Does the same for head-rhyme.
+        if self.scm_i_r_rhymes:
+            logging.info("Rich Head Rhyming Scheme: %s", self.scm_i_r_rhymes)
+            stanza_scheme = [stanza.scm_i_r_rhymes for stanza in self.stanzas if stanza.scm_i_r_rhymes]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Rich Head Rhyming Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_i_p_rhymes:
+            logging.info("Perfect Head Rhyming Scheme: %s", self.scm_i_p_rhymes)
+            stanza_scheme = [stanza.scm_i_p_rhymes for stanza in self.stanzas if stanza.scm_i_p_rhymes]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Perfect Head Rhyming Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_i_asso:
+            logging.info("Head Assonance Scheme: %s", self.scm_i_asso)
+            stanza_scheme = [stanza.scm_i_asso for stanza in self.stanzas if stanza.scm_i_asso]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Head Assonance Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_i_bkt_cons:
+            logging.info("Head Bracket Consonance Scheme: %s", self.scm_i_bkt_cons)
+            stanza_scheme = [stanza.scm_i_bkt_cons for stanza in self.stanzas if stanza.scm_i_bkt_cons]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Head Bracket Consonance Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_i_cons:
+            logging.info("Head Consonance Scheme: %s", self.scm_i_cons)
+            stanza_scheme = [stanza.scm_i_cons for stanza in self.stanzas if stanza.scm_i_cons]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Head Consonance Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_i_str_allit:
+            logging.info("Head Alliteration Scheme: %s", self.scm_i_str_allit)
+            stanza_scheme = [stanza.scm_i_str_allit for stanza in self.stanzas if stanza.scm_i_str_allit]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Head Alliteration Schemes: %s", ', '.join(stanza_scheme))
+        elif self.scm_i_ini_allit:
+            logging.info("Head Word Initial Alliteration Scheme: %s", self.scm_i_ini_allit)
+            stanza_scheme = [stanza.scm_i_ini_allit for stanza in self.stanzas if stanza.scm_i_ini_allit]
+            if len(stanza_scheme) > 1:
+                logging.info("Stanza Head Word Initial Alliteration Schemes: %s", ', '.join(stanza_scheme))
+        # Set a boolean for rhyme having been calculated.
+        self.got_rhyme = True
 
     def get_sonic_features(self):
         # Has stanzas get their sonic features.
@@ -241,112 +257,135 @@ class Poem:
         # Have stanzas report their sonic features.
         header1("Sonic Features")
         for index, stanza in enumerate(self.stanzas):
-            logging.info('Stanza %s:\n%s', index + 1, stanza.plaintext)
+            header2('Stanza %s (%s...)' % (index + 1, ' '.join([token.token for token in stanza.word_tokens[0:4]])))
             stanza.print_sonic_features()
 
+    # Gets parts of speech for sentences/lines/words
+    def get_pos(self):
+        # Have each sentence get parts of speech
+        for sentence in self.sentences:
+            sentence.get_pos()
+        # Log parts of speech by line.
+        header1('Parts of speech')
+        for line in self.lines:
+            if line.is_blank:
+                logging.info('')
+            else:
+                token_tuples = [(token.token, token.simple_pos) for token in line.tokens]
+                tags_with_text(token_tuples, line.num)
+        # Set a boolean for pos having been calculated.
+        self.got_pos = True
+
     def get_scansion(self):
-        if not self.scans:
-            # Have all lines get their length.
-            for index, line in enumerate(self.lines):
-                if line.tokenized_text:
-                    line.get_stress()
-                    line.get_length()
-                    # Sort lines by syllable count for lines that don't have multiple possible lengths.
-                    if not line.multi_length:
-                        length = line.syllables
-                        if length in self.lines_by_syllable:
-                            self.lines_by_syllable[length].append(index)
-                        else:
-                            self.lines_by_syllable[length] = []
-                            self.lines_by_syllable[length].append(index)
-            # Have lines with multiple possible lengths resolve their length.
-            line_len_count = sorted([(key, len(indexes)) for key, indexes in self.lines_by_syllable.items()],
-                                    key=lambda tup: tup[1], reverse=True)
-            for index, line in enumerate(self.lines):
-                if line.multi_length:
+        # Get parts of speech if we haven't already.
+        if not self.got_pos:
+            logging.warning("Parts of speech required for scansion. Generating parts of speech...")
+            self.get_pos()
+        # Have each line get its syllable count.
+        for line in self.lines:
+            if not line.is_blank:
+                line.get_length()
+                # Sort lines by syllable count for lines that don't have multiple possible lengths.
+                if not isinstance(line.syllables_base, int):
+                    length = line.syllables
+                    if length in self.lines_by_syllable:
+                        self.lines_by_syllable[length].append(line)
+                    else:
+                        self.lines_by_syllable[length] = []
+                        self.lines_by_syllable[length].append(line)
+
+        # Create a list of line lengths sorted so that the more common lengths are earlier in the list.
+        line_len_count = sorted([(key, len(lines)) for key, lines in self.lines_by_syllable.items()],
+                                key=lambda tup: tup[1], reverse=True)
+        # Have lines with multiple possible lengths resolve their length.
+        for line in self.lines:
+            if not line.is_blank:
+                if isinstance(line.syllables_base, int):
                     line.set_length(line_len_count)
                     # Add the newly resolved multi length line to lines_by_syllable.
                     length = line.syllables
                     if length in self.lines_by_syllable:
-                        self.lines_by_syllable[length].append(index)
+                        self.lines_by_syllable[length].append(line)
                     else:
                         self.lines_by_syllable[length] = []
-                        self.lines_by_syllable[length].append(index)
+                        self.lines_by_syllable[length].append(line)
+        # Have single syllable tokens set their stress tendency.
+        for token in self.word_tokens:
+            token.set_stress_tendency()
+        # Have lines get an initial stress pattern.
+        for line in self.lines:
+            if not line.is_blank:
+                line.get_stress()
+        # Get scans for each line length.
+        for key, lines in self.lines_by_syllable.items():
+            scans = [line.stress for line in lines]
+            predicted, predicted_single = predict_scan(key, scans)
+            predicted_merged, best_match = check_meters(key, predicted, predicted_single)
+            self.scans[key] = (predicted, predicted_single, predicted_merged, best_match)
 
-            # Have each line get a scansion.
-            for line in self.lines:
-                if line.tokenized_text:
-                    line.get_scansion()
-
-            for key, indexes in self.lines_by_syllable.items():
-                scans = [self.lines[index].stress for index in indexes]
-                predicted, predicted_single = predict_scan(key, scans)
-                predicted_merged, best_match = check_meters(key, predicted, predicted_single)
-                self.scans[key] = (predicted, predicted_single, predicted_merged, best_match)
-
-            for line in self.lines:
-                if line.tokenized_text:
-                    line_scan = []
-                    position = 0
-                    best = self.scans[line.syllables][3]
-                    pattern = self.scans[line.syllables][3]
-                    # If we have no best_match, we use predicted_merged.
-                    if not pattern:
-                        pattern = self.scans[line.syllables][2]
-                    # Loop through stresses in lines and add that stress to fin_scan.
-                    for stresses in line.stress:
-                        # Resolves words with multiple possible stress patterns based on best_match or predicted_merged
-                        # if no best_match is available.
-                        if len(stresses) > 1:
-                            ratios = []
-                            for stress in stresses:
-                                ratios.append(pattern_match_ratio(stress, pattern[position:position + len(stress)]))
-                            best_index = ratios.index(max(ratios))
-                            line_scan.append(stresses[best_index])
-                            position += len(stresses[best_index])
-                        # Resolves single syllable words using best_match or stress tendency if we have no best_match.
-                        else:
-                            if stresses[0] == 'S' or stresses[0] == 'W':
-                                if not best:
-                                    line_scan.append('1')
-                                    position += 1
-                                else:
-                                    line_scan.append(best[position])
-                                    position += 1
-                            # Note: words with neutral tendency resolve as unstressed if we have no best_match.
-                            elif stresses[0] == 'U' or stresses[0] == 'N':
-                                if not best:
-                                    line_scan.append('0')
-                                    position += 1
-                                else:
-                                    line_scan.append(best[position])
-                                    position += 1
+        # Choose stress for single syllable words and words that have multiple stress patterns.
+        for line in self.lines:
+            if not line.is_blank:
+                position = 0
+                best = self.scans[line.syllables][3]
+                pattern = self.scans[line.syllables][3]
+                # If we have no best_match, we use predicted_merged.
+                if not pattern:
+                    pattern = self.scans[line.syllables][2]
+                # Loop through word tokens in lines.
+                for token in line.word_tokens:
+                    # Resolves words with multiple possible stress patterns based on best_match or predicted_merged
+                    # if no best_match is available.
+                    if len(token.pronunciations[0].stress) > 1:
+                        ratios = []
+                        stresses = [pronunciation.stress for pronunciation in token.pronunciations]
+                        for stress in stresses:
+                            ratios.append(pattern_match_ratio(stress, pattern[position:position + len(stress)]))
+                        best_index = ratios.index(max(ratios))
+                        token.cull_pronunciations('stress', stresses[best_index])
+                        position += len(stresses[best_index])
+                    # Resolves single syllable words using best_match or stress tendency if we have no best_match.
+                    else:
+                        if token.stress_tendency == ['S'] or token.stress_tendency == ['W']:
+                            if not best:
+                                token.stress_override = '1'
+                                position += 1
                             else:
-                                line_scan.append(stresses[0])
-                                position += len(stresses[0])
-                    line.final_scansion = line_scan
+                                token.stress_override = best[position]
+                                position += 1
+                        # Note: words with neutral tendency resolve as unstressed if we have no best_match.
+                        elif token.stress_tendency == ['U'] or token.stress_tendency == ['N']:
+                            if not best:
+                                token.stress_override = '0'
+                                position += 1
+                            else:
+                                token.stress_override = best[position]
+                                position += 1
 
-            # Log scansion.
-            header1('Scansion')
-            for line in self.lines:
-                if line.tokenized_text:
-                    tags_with_text(line.split_by_tokens, line.tokenized_text, convert_scansion(line.final_scansion),
-                                   line.line_num, True)
-                else:
-                    logging.info('')
-            # Adds warnings to the log for the scansion of lines with a syllable length that had few examples
-            unreliable_list = []
-            for syllables, indexes in self.lines_by_syllable.items():
-                if len(indexes) < 4:
-                    unreliable_list.append((syllables, len(indexes)))
-            if unreliable_list:
-                unreliable_list.sort()
-                logging.warning("The scansion for %s syllable lines may be unreliable due to limited examples (%s).",
-                                join_list_proper([str(syllables) for syllables, count in unreliable_list]),
-                                ', '.join([str(count) for syllables, count in unreliable_list]))
+        # Log scansion.
+        header1('Scansion')
+        for line in self.lines:
+            if line.is_blank:
+                logging.info('')
+            else:
+                tokens = [token.token for token in line.tokens]
+                stress = [token.get_stress() for token in line.tokens]
+                tags_with_text(list(zip(tokens, convert_scansion(stress))), line.num, True)
+        # Adds warnings to the log for the scansion of lines with a syllable length that had few examples
+        unreliable_list = []
+        for syllables, lines in self.lines_by_syllable.items():
+            if len(lines) < 4:
+                unreliable_list.append((syllables, len(lines)))
+        if unreliable_list:
+            unreliable_list.sort()
+            logging.warning("The scansion for %s syllable lines may be unreliable due to limited examples (%s).",
+                            join_list_proper([str(syllables) for syllables, count in unreliable_list]),
+                            ', '.join([str(count) for syllables, count in unreliable_list]))
+        # Set a boolean for scansion having been calculated.
+        self.got_scansion = True
 
     def get_meter(self):
-        if not self.scans:
+        if not self.got_scansion:
             logging.warning("Scansion required for meter. Generating scansion...")
             self.get_scansion()
         if not self.meters:
@@ -376,87 +415,62 @@ class Poem:
                 logging.warning("The meter for %s syllable lines may be unreliable due to limited examples (%s).",
                                 join_list_proper([str(syllables) for syllables, count in unreliable_list]),
                                 ', '.join([str(count) for syllables, count in unreliable_list]))
+        # Set a boolean for meter having been calculated.
+        self.got_meter = True
 
     def get_meter_v_scan(self):
-        if not self.scans:
+        if not self.got_scansion:
             logging.warning("Scansion required for comparison. Generating scansion...")
             self.get_scansion()
         header1("Scansion vs Meter")
         lines_missing_meter = False
         for line in self.lines:
+            tokens = [token.token for token in line.tokens]
             meter = self.scans[line.syllables][3] if line.syllables in self.scans else None
-            if line.tokenized_text:
+            if not line.is_blank:
                 if meter:
                     line_stress = []
                     position = 0
-                    for word in line.final_scansion:
-                        word_stress = ''
-                        for stress in word:
-                            if stress == meter[position]:
-                                word_stress += stress
-                                position += 1
-                            else:
-                                word_stress += '̲' + stress
-                                position += 1
-                        line_stress.append(word_stress)
-                    tags_with_text(line.split_by_tokens, line.tokenized_text, convert_scansion(line_stress),
-                                   line.line_num, True)
+                    for token in line.tokens:
+                        stress = token.get_stress()
+                        if stress:
+                            word_stress = ''
+                            for pos in stress:
+                                if pos == meter[position]:
+                                    word_stress += pos
+                                    position += 1
+                                else:
+                                    word_stress += '̲' + pos
+                                    position += 1
+                            line_stress.append(word_stress)
+                        else:
+                            line_stress.append(None)
+                    tags_with_text(list(zip(tokens, convert_scansion(line_stress))), line.num, True)
                 # Handle lines without a meter.
                 else:
-                    tags_with_text(line.split_by_tokens, line.tokenized_text, convert_scansion(line.final_scansion),
-                                   str(line.line_num) + '*', True, logging.warning)
+                    line_stress = [token.get_stress() for token in line.tokens]
+                    tags_with_text(list(zip(tokens, convert_scansion(line_stress))),
+                                   str(line.num) + '*', True, logging.warning)
                     lines_missing_meter = True
             else:
                 logging.info('')
         if lines_missing_meter:
             logging.warning("No meter available for lines marked with *.")
 
-    # Gets parts of speech for sentences/lines/words
-    def get_pos(self):
-        # Have each sentence get parts of speech
-        for sentence in self.sentences:
-            sentence.get_pos()
-
-        # Create a single list of parts of speech so that we can iterate through it
-        all_pos = []
-        for sentence in self.sentences:
-            all_pos.extend(sentence.pos)
-
-        # Use indexes to assign parts of speech to lines
-        i = 1
-        for index, indexes in enumerate(self.line_indexes):
-            while i <= indexes[1]:
-                self.lines[index].pos.append(all_pos[i - 1])
-                i += 1
-
-        # Then feeds those parts of speech into the words which keep track of which parts of speech they appear as
-        for line in self.lines:
-            for index, part in enumerate(line.pos):
-                self.words[line.tokenized_text[index]].pos[part] += 1
-                # Also does the same thing for parts of speech relevant to wordnet
-                wordnetpos = convert_pos(part)
-                if wordnetpos:
-                    self.words[line.tokenized_text[index]].wordnet_pos[wordnetpos] += 1
-        # Save part of speech counts
-        for line in self.lines:
-            for pos in line.pos:
-                self.pos_count[pos] += 1
-        # Convert/save part of speech counts with simpler categories
-        for pos in self.pos_count:
-            simple_name = config.short_pos_dict[pos]
-            self.simple_pos_count[simple_name] += self.pos_count.get(pos)
-        header1('Parts of speech')
-        for line in self.lines:
-            if line.tokenized_text and line.pos:
-                simplified = []
-                # Create a list of simplied tags for each line.
-                for pos in line.pos:
-                    simplified.append(config.short_pos_dict[pos])
-                tags_with_text(line.split_by_tokens, line.tokenized_text, simplified, line.line_num)
-            else:
-                logging.info('')
-
     def get_form(self):
+        # If we haven't generated scansion yet, warn the user and do so.
+        if not self.got_scansion:
+            logging.warning("Scansion required for form identification. Generating scansion...")
+            self.get_scansion()
+        # If we haven't generated rhyme yet, warn the user and do so.
+        if not self.got_rhyme:
+            logging.warning("Rhyme required for form identification. Generating rhymes...")
+            self.get_rhymes()
+        # If we haven't generated meter yet, warn the user and do so.
+        if not self.got_meter:
+            logging.warning("Meter required for form identification. Generating meter...")
+            self.get_meter()
+
         stanza_forms_out = {}
         for index, stanza in enumerate(self.stanzas):
             stanza.get_form()
@@ -477,9 +491,9 @@ class Poem:
                     poem_forms_out.append("Unrecognized form")
         else:
             # Get possible names
-            poem_forms_out.extend(name_poem(self.rhyme_scheme,
+            poem_forms_out.extend(name_poem(self.scm_p_rhymes,
                                             [length for stanza in self.stanzas for length in stanza.line_lengths],
-                                            sum([stanza.line_count for stanza in self.stanzas])))
+                                            sum([len(stanza.lines) for stanza in self.stanzas])))
             # If all of the stanzas have the same form(s), but we have multiples, return the appropriate second entries.
             if len(unique_forms) == 1:
                 for form in unique_forms[0]:
@@ -487,7 +501,7 @@ class Poem:
                         poem_forms_out.append(config.poem_forms_stanzaic[form][1] or form)
         self.form = poem_forms_out or ["Unrecognized form"]
 
-        poem_out = join_list_proper(poem_forms_out)
+        poem_out = join_list_proper(self.form)
         stanza_out = [stanza + ' (' + ', '.join(lines) + ')' for stanza, lines in stanza_forms_out.items()]
 
         stanza_plural = ''
@@ -498,13 +512,23 @@ class Poem:
         logging.info("Poetic Form: %s", poem_out)
         logging.info("Stanzaic Form%s: %s", stanza_plural, '; '.join(stanza_out))
 
-
-    # TODO: currently ouputting scansion incorrectly.
+    # Records poem attributes to csv.
+    # Future: should record the rest of the poem's attributes.
     def record(self, outputfile=config.output_file):
+        if not self.got_rhyme:
+            logging.warning("Rhyme required for recording. Generating rhyme...")
+            self.get_pos()
+        if not self.got_pos:
+            logging.warning("Parts of speech required for recording. Generating parts of speech...")
+            self.get_pos()
+        if not self.got_scansion:
+            logging.warning("Scansion required for recording. Generating scansion...")
+            self.get_pos()
+        if not self.got_meter:
+            logging.warning("Meter required for recording. Generating meter...")
+            self.get_pos()
 
-        field_headers = ['Title', 'Author', '# Lines', '# Words', 'Rhyme Scheme', 'Scansion', 'Meter', '# Noun',
-                         '# Adj', '# Verb', '# Adv', '# Pron', '# Prep', '# Det']
-        pos_out = ['NOUN', 'ADJ', 'VERB', 'ADV', 'PRON', 'PREP', 'DET']
+        field_headers = ['Title', 'Author', '# Lines', '# Words', 'Perfect Rhyme Scheme']
         try:
             # Check to see if output already has any data in it
             with open(outputfile, 'r', newline='\n', encoding="utf-8") as file:
@@ -517,18 +541,11 @@ class Poem:
                     writer.writerow(field_headers)
 
             output = list()
-            output.append(self.title)
-            output.append(self.author)
-            output.append(len(self.lines))
-            wordcount = 0
-            for line in self.lines:
-                wordcount += len(line.tokenized_text)
-            output.append(wordcount)
-            output.append(self.rhyme_scheme)
-            output.append(self.scans)
-            output.append(self.meters)
-            for pos in pos_out:
-                output.append(self.simple_pos_count[pos])
+            output.append(self.title)  # Title
+            output.append(self.author)  # Author
+            output.append(len(self.lines))  # Line count
+            output.append(len(self.word_tokens))  # Word count
+            output.append(self.scm_p_rhymes)
 
             with open(outputfile, 'a', newline='\n', encoding="utf-8") as file:
                 writer = csv.writer(file)

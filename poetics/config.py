@@ -19,6 +19,8 @@ spacy_model_name = 'en_core_web_sm'
 cmudict_path = 'text/cmudict.json'
 # Location for syllabified version of cmudict.
 syllabified_path = 'text/cmudict_syllabified.json'
+# Location for phoneticized version of cmudict.
+phoneticized_path = 'text/cmudict_phoneticized.json'
 # Location for poem form lists.
 poem_forms_path = 'text/poem_forms.json'
 # Location for stanza forms list.
@@ -35,7 +37,7 @@ short_pos_dict = {'NIL': '\"', 'AFX': 'AJ', 'JJ': 'AJ', 'JJR': 'AJ', 'JJS': 'AJ'
                   'CC': 'CC', 'DT': 'DT', 'UH': 'UH', 'NN': 'N', 'NNS': 'N', 'WP': 'N', 'CD': '#', 'POS': 'RT',
                   'RP': 'RT', 'TO': 'RT', 'PRP': 'PRP', 'NNP': 'PRN', 'NNPS': 'PRN', '_SP': 'SP', 'SP': 'SP', '#': 'SM',
                   'SYM': 'SM', 'MD': 'V', 'VB': 'V', 'VBD': 'V', 'VBG': 'V', 'VBN': 'V', 'VBP': 'V', 'VBZ': 'V',
-                  'BES': 'V', 'HVS': 'V', 'FW': 'X', 'ADD': 'X', 'GW': 'X', 'XX': 'X'}
+                  'BES': 'V', 'HVS': 'V', 'FW': 'X', 'ADD': 'X', 'GW': 'X', 'XX': 'X', '.': '?'}
 # Rhyme pattern names.
 rhyme_patterns = {'AAA': 'Tercet', 'ABA': 'Tercet', 'AAAA': 'Tanaga', 'AABA': 'Rubaiyat', 'AABB': 'Clerihew',
                   'ABBA': 'Enclosed', 'ABCB': 'Simple 4-Line', 'AABBA': 'Limerick', 'ABABB': 'Cinquain',
@@ -122,10 +124,8 @@ unstressed_words = ["a", "am", "an", "and", "are", "as", "but", "by", "can", "fo
 ########################################################################################################################
 spacy_model = spacy.load(spacy_model_name)
 enchant_dictionary = enchant.request_pwl_dict(os.path.join(directory, cmudict_wordlist_path))
-with open(os.path.join(directory, syllabified_path)) as file:
-    syllabified_dict = json.load(file)
-with open(os.path.join(directory, cmudict_path)) as file:
-    cmu_dict = json.load(file)
+with open(os.path.join(directory, phoneticized_path)) as file:
+    phoneticized_dict = json.load(file)
 with open(os.path.join(directory, poem_forms_path)) as file:
     poem_forms_file = json.load(file)
 poem_forms = poem_forms_file[0]

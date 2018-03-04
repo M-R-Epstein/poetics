@@ -13,7 +13,7 @@ def create_poem(filename, title=None, author=None, directory=config.poem_directo
     if not title:
         title_search = re.search(".+(?=-)", filename)
         if title_search:
-            title = title_search.group(0)
+            title = title_search.group(0).split('/')[-1]
         else:
             title = "Unknown Poem"
             logging.warning("Title for \"%s\" set as \"Unknown Poem\". Please format filenames as "
@@ -31,6 +31,7 @@ def create_poem(filename, title=None, author=None, directory=config.poem_directo
     return Poem(read_data, title, author)
 
 
+# TODO: needs reworking.
 def process_poems(directory=config.poem_directory, outputfile='output.csv'):
     # Does the provided directory exist?
     if not os.path.isdir(directory):
@@ -41,8 +42,8 @@ def process_poems(directory=config.poem_directory, outputfile='output.csv'):
         logging.warning("Directory \"%s\" contains no files.", directory)
         return None
 
-    for root, dirs, files in os.walk(directory):
-        for file in files:
+    for dirpath, dirnames, filenames in os.walk(directory):
+        for file in filenames:
             # Get poem name from file name
             name_search = re.search(".+(?=-)", file)
             if name_search:
@@ -60,13 +61,15 @@ def process_poems(directory=config.poem_directory, outputfile='output.csv'):
                                 "\"title-author.txt\".", file)
                 continue
             # Read in data
-            with open(directory + "/" + file) as data:
+            with open(dirpath + "/" + file, encoding="utf-8") as data:
                 read_data = data.readlines()
 
             # Create poem, do stuff, record
             poem = Poem(read_data, name, author)
             poem.get_rhymes()
+            # poem.get_sonic_features()
+            poem.get_pos()
             poem.get_scansion()
             poem.get_meter()
-            poem.get_pos()
+            poem.get_form()
             poem.record(outputfile)

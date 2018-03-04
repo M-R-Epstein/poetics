@@ -13,11 +13,32 @@ def header1(head):
     logging.info(bot)
 
 
+# Logs the provided string as a two-line level 1 header.
+def header1d(head1, head2):
+    width = 50
+    top = ('=' * width)
+    bot = ('=' * width)
+    whitespace1 = ' ' * ((width - len(head1))//2)
+    whitespace2 = ' ' * ((width - len(head2))//2)
+    logging.info(top)
+    logging.info('%s%s', whitespace1, head1)
+    logging.info('%s%s', whitespace2, head2)
+    logging.info(bot)
+
+
 # Logs the provided string as a level 2 header.
 def header2(head):
     width = 50 - (len(head) + 2)
     left = '=' * (width // 2)
     right = '=' * ((width // 2) + (width % 2 > 0))
+    logging.info("%s %s %s", left, head, right)
+
+
+# Logs the provided string as a level 3 header.
+def header3(head):
+    width = 50 - (len(head) + 2)
+    left = '-' * (width // 2)
+    right = '-' * ((width // 2) + (width % 2 > 0))
     logging.info("%s %s %s", left, head, right)
 
 
@@ -35,43 +56,46 @@ def join_list_proper(lst, term='and'):
 def convert_scansion(scansion):
     converted_scan = []
     for scan in scansion:
-        converted = scan.replace('0', 'u').replace('1', '/')
-        converted = re.sub("(̲?[u/])(?=[u/])", '\g<1> ', converted, )
-        converted_scan.append(converted)
+        if not scan:
+            converted_scan.append(None)
+        else:
+            converted = scan.replace('0', 'u').replace('1', '/')
+            converted = re.sub("(̲?[u/])(?=̲?[u/])", '\g<1> ', converted, )
+            converted_scan.append(converted)
     return converted_scan
 
 
 # Takes a list of tags and a list of tokenized words and attempts to align them in a readable form in the log.
 # If above = True, then the tags go above the text instead of under it.
-def tags_with_text(split_by_tokens, tokenized_text, tags, line_num=None, above=False, logger=logging.info):
+def tags_with_text(token_tuples, line_num=None, above=False, logger=logging.info):
     line_out = ''
     offset = 0
-    for index, word in enumerate(tags):
-        # Pre space accounts for the difference in length between the index of split_by_tokens and the token itself.
-        pre_space = len(split_by_tokens[index]) - len(tokenized_text[index])
-        if pre_space > 0:
-            line_out += ' ' * pre_space
-        # The .count portion is to account for zero length characters (presently combining underline is the only one).
-        dif = len(tokenized_text[index]) - (len(tags[index]) - tags[index].count('̲'))
-        offdif = dif + offset
-        if offdif > 0:
-            # Puts spaces equal to half (rounded down) the difference between tag/word length before tag
-            # Puts spaces equal to half (rounded up) the difference between tag/word length after tag
-            line_out += (' ' * (offdif // 2)) \
-                        + tags[index] \
-                        + (' ' * (offdif // 2 + (offdif % 2 > 0)))
-            offset = 0
+    # For untagged tokens, add a number of spaces to line out equal to its length.
+    for token, tag in token_tuples:
+        if not tag:
+            line_out += ' ' * len(token)
         else:
-            line_out += tags[index]
-            # Offset is just keeping track of how far we are pushed to the right by tag length>word length
-            offset += dif
+            # The .count portion is to account for zero length characters (presently combining underline).
+            diff = len(token) - (len(tag) - tag.count('̲'))
+            offdiff = diff + offset
+            if offdiff > 0:
+                # Puts spaces equal to half (rounded down) the difference between tag/word length before tag
+                # Puts spaces equal to half (rounded up) the difference between tag/word length after tag
+                line_out += (' ' * (offdiff // 2)) \
+                            + tag \
+                            + (' ' * (offdiff // 2 + (offdiff % 2 > 0)))
+                offset = 0
+            else:
+                line_out += tag
+                # Offset is just keeping track of how far we are pushed to the right by tag length>word length
+                offset += diff
     # Output each line with the tags over/under
     if above is True:
         logger(line_out)
     if line_num:
-        logger("%s (%s)", ''.join(split_by_tokens), line_num)
+        logger("%s (%s)", ''.join([token for token, tag in token_tuples]), line_num)
     else:
-        logger(''.join(split_by_tokens))
+        logger(''.join([token for token, tag in token_tuples]))
     if above is False:
         logger(line_out)
 
@@ -86,4 +110,8 @@ def print_sound_set(name, feature, tokenized_text):
             word_sets.append(', '.join(words))
         sound_set = '; '.join(word_sets)
         sound_sets.append(sound + ': ' + sound_set)
-    logging.info('%s: %s', name, ' | '.join(sound_sets))
+    header3(name)
+    for sset in sound_sets:
+        logging.info(sset)
+
+

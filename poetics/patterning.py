@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 
 from poetics import config as config
 
@@ -23,18 +24,27 @@ def pattern_match_ratio(pattern1, pattern2):
 
 
 # Assigns letters to features in an ordered dict.
-# TODO: Need to update this so that it uses Aa or aA if we go over 26 letters.
 def assign_letters_to_dict(ordered_dict, lower=False):
     keys = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    keys2 = 'abcdefghijklmnopqrstuvwxyz'
     if lower:
         keys = 'abcdefghijklmnopqrstuvwxyz'
+        keys2 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
     for index, feature in enumerate(ordered_dict):
         if index < 26:
             ordered_dict[feature] = keys[index]
-        # If we have more than 26 rhymes, starts using pairs of letters and so on
+        # If we have more than 26 rhymes, we starting using Aa Ab ... Ba ... Aaa.
         else:
-            ordered_dict[feature] = keys[index % 26] * ((index // 26) + 1)
+            ordered_dict[feature] = keys[(index // 26) - 1] + keys2[index % 26]
     return ordered_dict
+
+
+# Checks if a list of tokens contains any words.
+def check_for_words(tokens):
+    for token in tokens:
+        if not token.is_wspace and not token.is_punct:
+            return True
+    return False
 
 
 ########################################################################################################################
@@ -48,7 +58,14 @@ def predict_scan(length, scans):
     scan_counts_single = []
     predicted_scan = ''
     predicted_scan_single = ''
-
+    # # TODO: REMOVE THIS DEBUG SHITE
+    # print(length)
+    # print(scans)
+    # scan_lens = []
+    # # TODO: Somehow a length 12 line is getting included in here?
+    # for scan in scans:
+    #     scan_lens.append(sum([len(stress[0]) for stress in scan]))
+    # print(scan_lens)
     for x in range(0, length):
         scan_counts.append([int(0), int(0)])
         scan_counts_single.append([int(0), int(0)])
@@ -93,8 +110,8 @@ def predict_scan(length, scans):
 
 
 # Checks how well predicted stress patterns for the lines of a poem match standard meters.
-# Future: Address podic meter.
-# Future: Could deal with acephalous/catalectic three or four syllable feet.
+# Future: Podic meters.
+# Future: Acephalous/catalectic three or four syllable feet.
 def check_meters(length, predicted, predicted_single):
     foot_patterns = []
     predicted_merged = ''
@@ -199,8 +216,10 @@ def resolve_rhyme(candidates, rhyme_counts, rhyme_counts_mult):
     if max(appearance_count) >= 1:
         return candidates[appearance_count.index(max(appearance_count))]
     # If not, pick a rhyme based on how many unresolved lines it matches with (if any).
-    else:
+    elif max(appearance_count_mult) >= 1:
         return candidates[appearance_count_mult.index(max(appearance_count_mult))]
+    else:
+        return None
 
 
 # Takes a poem's line count and builds a list of the repeating poem forms that could match a poem of that length
@@ -298,3 +317,23 @@ def get_repeating_rhyme_patterns(poem_lines):
                 out_syllable_pattern = []
             out_forms.append([form[0], out_rhyme_pattern, out_syllable_pattern, poem_lines])
     return out_forms
+
+
+# Attempts to maximize matches across tokens for feature.
+def maximize_token_matches(tokens, feature):
+    # List of tokens that don't have that feature resolved.
+    unresolved_tokens = [token for token in tokens if not getattr(token, 's_' + feature)]
+    if not unresolved_tokens:
+        return
+    # Counts occurances of the feature for tokens that only have one candidate.
+    count = Counter([getattr(token.pronunciations[0], feature) for token in tokens if getattr(token, 's_' + feature)])
+    # Counter occurances of the feature for tokens that have multiple candidates.
+    multi_count = Counter([getattr(pronunciation, feature) for token in unresolved_tokens
+                           for pronunciation in token.pronunciations])
+    # Picks the most likely option for the given feature for unresolved tokens, then removes pronunciations from the
+    # token that do not share the selected option.
+    for token in unresolved_tokens:
+        best_feature = resolve_rhyme([getattr(pronunciation, feature) for pronunciation in token.pronunciations],
+                                     count, multi_count)
+        if best_feature:
+            token.cull_pronunciations(feature, best_feature)

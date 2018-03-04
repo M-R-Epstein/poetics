@@ -4,6 +4,7 @@ from Levenshtein import distance
 
 from poetics import config as config
 from poetics.patterning import get_repeating_rhyme_patterns
+from poetics.conversions import build_plural_or_posessive
 
 
 # Returns phonetic pronunciation for words from phoneticized cmudict.
@@ -12,7 +13,7 @@ def phonetic_dict(word):
     if word in config.phoneticized_dict:
         return config.phoneticized_dict[word]
     else:
-        raise KeyError
+        return None
 
 
 # Gets a word's pronunciations from phoneticized cmudict.
@@ -34,40 +35,55 @@ def get_pronunciations(token):
                      'jr.': 'jr',
                      'bros.': 'bro\'s',
                      'Ph.': 'ph'}
-    pronunciations = []
     token = token.lower()
     if token in special_cases:
         word = special_cases[token]
     else:
         word = token
-    try:
-        pronunciations = phonetic_dict(word)
-    except KeyError:
-        # If we don't get a working word from cmudict, have Enchant (spellchecker) try to find a recognized word.
-        # Using a dictionary which is a list of words in cmudict so it only suggests pronouncable words.
-        try:
-            potentials = config.enchant_dictionary.suggest(word)
-            # Handles a strange bug with PyEnchant appending carriage returns to suggestions.
-            for index, potential in enumerate(potentials):
-                potentials[index] = potential.strip()
-            # If Enchant only returns one suggestion, we use that
-            if len(potentials) == 1:
-                logging.warning('Reading \"%s\" as \"%s\"', word, potentials[0])
-                pronunciations = phonetic_dict(potentials[0])
-            # If we get multiple suggestions, use Levenshtein distance to select the closest.
-            elif len(potentials) > 1:
-                distances = {}
-                for suggestion in potentials:
-                    distances[suggestion] = distance(suggestion, word)
-                best_match = min(distances, key=distances.get)
-                logging.warning('Reading \"%s\" as \"%s\".', word, best_match)
-                pronunciations = phonetic_dict(best_match)
-            # If PyEnchant returns an empty list of suggestions then log that.
+    pronunciations = phonetic_dict(word)
+    # If we don't get a working word from cmudict, see if we have a depluralized version of the word.
+    if not pronunciations:
+        base_pronunciations = None
+        used_word = None
+        transformation_type = 'plural (or present)'
+        if word[-1] == 's':
+            # If the word is apparently a posessive form, see if we have a pronunciation for the word without 's.
+            if word[-2] == '\'' or word[-2] == '’':
+                base_pronunciations = phonetic_dict(word[:-2])
+                used_word = word[:-2]
+                transformation_type = 'posessive'
+            # If it's not posessive, treat it as a possible plural.
             else:
-                logging.error('Found no valid suggestions for \"%s\".', word)
-        except KeyError:
-            logging.error('KeyError attempting to resolve \"%s\".', word)
-
+                base_pronunciations = phonetic_dict(word[:-1])
+                used_word = word[:-1]
+                if not base_pronunciations and word[-2] == 'e':
+                    base_pronunciations = phonetic_dict(word[:-2])
+                    used_word = word[:-2]
+        if base_pronunciations:
+            pronunciations = build_plural_or_posessive(base_pronunciations)
+            logging.warning('Reading \"%s\" as the %s form of \"%s\".', word, transformation_type, used_word)
+    if not pronunciations:
+        # If we are still without a pronunciation, have Enchant (spellchecker) try to find a recognized word.
+        # Using a dictionary which is a list of words in cmudict so it only suggests pronouncable words.
+        potentials = config.enchant_dictionary.suggest(word)
+        # Handles a strange bug with PyEnchant appending carriage returns to suggestions.
+        for index, potential in enumerate(potentials):
+            potentials[index] = potential.strip()
+        # If Enchant only returns one suggestion, we use that
+        if len(potentials) == 1:
+            logging.warning('Reading \"%s\" as \"%s\".', word, potentials[0])
+            pronunciations = phonetic_dict(potentials[0])
+        # If we get multiple suggestions, use Levenshtein distance to select the closest.
+        elif len(potentials) > 1:
+            distances = {}
+            for suggestion in potentials:
+                distances[suggestion] = distance(suggestion, word)
+            best_match = min(distances, key=distances.get)
+            logging.warning('Reading \"%s\" as \"%s\".', word, best_match)
+            pronunciations = phonetic_dict(best_match)
+        # If PyEnchant returns an empty list of suggestions then log that.
+        else:
+            logging.error('Found no valid suggestions for \"%s\".', word)
     return pronunciations
 
 
@@ -128,8 +144,6 @@ def name_meter(pattern):
                 foot = trimmed_pattern2[0]
                 foot_names.append((config.metrical_feet_2[foot], 'catalectic'))
                 repetition = len(trimmed_pattern2) + 1
-            if len(foot_names) == 1:
-                foot_name = foot_names[0]
     # Get a name
     if classical_name:
         return classical_name, None
@@ -184,7 +198,8 @@ def name_stanza(rhyme_scheme, line_lengths, meters, line_count):
 
 def name_poem(rhyme_scheme, line_lengths, line_count):
     # Strip whitespace from rhyme_scheme
-    rhyme_scheme = rhyme_scheme.replace(' ', '')
+    if rhyme_scheme:
+        rhyme_scheme = rhyme_scheme.replace(' ', '')
     # If all lines are the same length, set line_lengths to that one length.
     if len(set(line_lengths)) == 1:
         line_lengths = str(line_lengths[0])
