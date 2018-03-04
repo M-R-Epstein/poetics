@@ -58,14 +58,6 @@ def predict_scan(length, scans):
     scan_counts_single = []
     predicted_scan = ''
     predicted_scan_single = ''
-    # # TODO: REMOVE THIS DEBUG SHITE
-    # print(length)
-    # print(scans)
-    # scan_lens = []
-    # # TODO: Somehow a length 12 line is getting included in here?
-    # for scan in scans:
-    #     scan_lens.append(sum([len(stress[0]) for stress in scan]))
-    # print(scan_lens)
     for x in range(0, length):
         scan_counts.append([int(0), int(0)])
         scan_counts_single.append([int(0), int(0)])

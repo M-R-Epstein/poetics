@@ -31,7 +31,6 @@ def create_poem(filename, title=None, author=None, directory=config.poem_directo
     return Poem(read_data, title, author)
 
 
-# TODO: needs reworking.
 def process_poems(directory=config.poem_directory, outputfile='output.csv'):
     # Does the provided directory exist?
     if not os.path.isdir(directory):
