@@ -15,45 +15,6 @@ with open(os.path.join(config.directory, config.syllabified_path)) as file:
     syllabified_dict = json.load(file)
 
 
-# Writes a wordlist from CMUdict to text/wordlist.txt
-def write_cmu_wordlist():
-
-    wordlist = cmudict.words()
-
-    with open('text/wordlist.txt', 'w') as f:
-        for index, items in enumerate(wordlist):
-            wordlist[index] = wordlist[index] + "\n"
-        f.writelines(wordlist)
-
-
-# Pulls out the words from frequencylist that are present in CMUDict and writes a sorted list to text/wordlistfreq.txt
-def write_cmu_wordlist_frequencies():
-    wordlist = cmudict.words()
-
-    frequency_source = {}
-    frequency_list = {}
-    output = []
-
-    with open('text/frequencylist.txt') as data:
-        as_csv = csv.reader(data, delimiter='\t')
-        for row in as_csv:
-            frequency_source[row[0]] = row[1]
-
-    for word in wordlist:
-        if word in frequency_source:
-            frequency_list[word] = int(frequency_source[word])
-
-    # Create a sorted version of our dictionary
-    sort = [(k, frequency_list[k]) for k in sorted(frequency_list, key=frequency_list.get, reverse=True)]
-
-    # Prepare output lines
-    for item in sort:
-        output.append(item[0] + "\t" + str(item[1]) + "\n")
-
-    with open('text/wordlistfreq.txt', 'w') as f:
-        f.writelines(output)
-
-
 # Syllabifies cmudict and writes it as cmudict_syllabified.json
 def syllabify_cmudict():
 
