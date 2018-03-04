@@ -14,6 +14,17 @@ with open(os.path.join(config.directory, config.syllabified_path)) as file:
     syllabified_dict = json.load(file)
 
 
+# Writes a wordlist from CMUdict to text/wordlist.txt
+def write_cmu_wordlist():
+
+    wordlist = cmudict.words()
+
+    with open(config.directory + '/text/wordlist.txt', 'w') as f:
+        for index, items in enumerate(wordlist):
+            wordlist[index] = wordlist[index] + "\n"
+        f.writelines(wordlist)
+
+
 # Syllabifies cmudict and writes it as cmudict_syllabified.json
 def syllabify_cmudict():
 
