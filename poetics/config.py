@@ -14,7 +14,7 @@ poem_directory = '/poems'
 # Default output file.
 output_file = 'output.csv'
 # Name of spacy model to use.
-spacy_model_name = 'en_core_web_sm'
+spacy_model_dir = 'text/spacy/en_core_web_sm'
 # Location for json version of cmudict.
 cmudict_path = 'text/cmudict.json'
 # Location for syllabified version of cmudict.
@@ -122,7 +122,7 @@ unstressed_words = ["a", "am", "an", "and", "are", "as", "but", "by", "can", "fo
 ########################################################################################################################
 # Loading
 ########################################################################################################################
-spacy_model = spacy.load(spacy_model_name)
+spacy_model = spacy.load(os.path.join(directory, spacy_model_dir))
 enchant_dictionary = enchant.request_pwl_dict(os.path.join(directory, cmudict_wordlist_path))
 with open(os.path.join(directory, phoneticized_path)) as file:
     phoneticized_dict = json.load(file)
