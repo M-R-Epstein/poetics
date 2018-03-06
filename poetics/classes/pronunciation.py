@@ -21,8 +21,8 @@ class Pronunciation:
         self.p_rhyme_type = None  # Perfect rhyme type. Feminine (F) or masculine (M).
         self.r_rhyme = None  # Rich rhyme.
 
-        # Future: Light rhyme (stressed syllables with unstressed syllables).
-        # Future: Unstressed rhyme (unstressed syllables with unstressed syllables).
+        # Future: light rhyme (stressed syllables with unstressed syllables).
+        # Future: unstressed rhyme (unstressed syllables with unstressed syllables).
 
         f_syllables = []
         for syllable in syllables:

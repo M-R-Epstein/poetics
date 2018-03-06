@@ -66,7 +66,7 @@ def process_poems(directory=config.poem_directory, outputfile='output.csv'):
             # Create poem, do stuff, record
             poem = Poem(read_data, name, author)
             poem.get_rhymes()
-            # poem.get_sonic_features()
+            poem.get_sonic_features()
             poem.get_pos()
             poem.get_scansion()
             poem.get_meter()
