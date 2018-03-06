@@ -148,6 +148,7 @@ def convert_pos(pos):
 
 
 # Title cases titles/names. Does not handle subtitles presently.
+# Future: handle roman numerals.
 def title_case(text):
     decap = ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'en', 'for', 'if', 'in', 'of', 'on', 'or', 'the', 'to', 'v',
              'v.', 'via', 'vs', 'vs.']
@@ -249,35 +250,3 @@ def feats_to_scheme(features, lower=False, allow_blanks=False, max_unique=None):
             return None
     # Return joined scheme
     return ''.join([' ' if not feature or feature == ' ' else ordered_features[feature] for feature in features])
-
-
-########################################################################################################################
-# Pronunciation
-########################################################################################################################
-def build_plural_or_posessive(base_pronunciations):
-    sibilant = ['S', 'Z', 'SH', 'ZH', 'CH', 'JH']
-    voiceless = ['P', 'T', 'K', 'F', 'TH']
-    for index, pronunciation in enumerate(base_pronunciations):
-        out_pro = pronunciation
-        b_coda = pronunciation[-1][3].split(' ')
-        # If the final consonant sound of the final syllable is sibilant, add a new syllable ending with IH Z which
-        # 'steals' the last consonant from the previous syllable's coda to be its onset.
-        if b_coda[-1] in sibilant:
-            new_syl = [0, b_coda[-1], 'IH', 'Z']
-            out_pro[-1][3] = ' '.join(b_coda[:-1])
-            out_pro.append(new_syl)
-        # If the final consonant sound is an unvoiced consonant, add S to the coda of the last syllable.
-        elif b_coda[-1] in voiceless:
-            new_coda = b_coda
-            new_coda.append('S')
-            out_pro[-1][3] = ' '.join(new_coda)
-        # Otherwise, add Z to the coda of the last syllable.
-        else:
-            if b_coda[0]:
-                new_coda = b_coda
-            else:
-                new_coda = []
-            new_coda.append('Z')
-            out_pro[-1][3] = ' '.join(new_coda)
-        base_pronunciations[index] = out_pro
-    return base_pronunciations

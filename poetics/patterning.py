@@ -1,4 +1,3 @@
-import re
 from collections import Counter
 
 from poetics import config as config
@@ -212,103 +211,6 @@ def resolve_rhyme(candidates, rhyme_counts, rhyme_counts_mult):
         return candidates[appearance_count_mult.index(max(appearance_count_mult))]
     else:
         return None
-
-
-# Takes a poem's line count and builds a list of the repeating poem forms that could match a poem of that length
-def get_repeating_rhyme_patterns(poem_lines):
-    out_forms = []
-    alphabet = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-                'V', 'W', 'X', 'Y', 'Z']
-    for form in config.poem_forms_repeating:
-        # Get the length of the head of the pattern if one exists.
-        rhyme_head = len([character for character in form[1] if not character.isdigit()])
-        syllables_head = 0
-        if form[4]:
-            syllables_head = len(form[4].split())
-        # Get the length of the tail of the pattern if one exists.
-        rhyme_tail = len([character for character in form[3] if not character.isdigit()])
-        syllables_tail = 0
-        if form[6]:
-            syllables_tail = len(form[6].split())
-        # Get the length of the core repeated portion.
-        rhyme_core = len([character for character in form[2] if not character.isdigit()])
-        syllables_core = 0
-        if form[5]:
-            syllables_core = len(form[5].split())
-        # Number of lines left after we remove the length of the head/tail.
-        poem_remaining_lines = poem_lines - (rhyme_head or syllables_head) - (rhyme_tail or syllables_tail)
-        # If the pattern can fit, then repeat the repeating portions to achieve the appropriate length.
-        if poem_remaining_lines % (rhyme_core or syllables_core) == 0:
-            out_rhyme_pattern = []
-            out_syllable_pattern = []
-            # If there is a syllables_core, then deal with repeating the syllable counts.
-            if syllables_core > 0:
-                out_syllable_pattern.extend(form[4])
-                for i in range(0, (poem_remaining_lines // syllables_core)):
-                    out_syllable_pattern.append(form[5])
-                out_syllable_pattern.extend(form[6])
-            # If there is a rhyme_core, then deal with repeating it (with interlocking).
-            if rhyme_core > 0:
-                split_repeat = re.findall('([a-zA-Z]\d?)', form[2])
-                alphabet_count = 0
-                current_alphabet = alphabet[:]
-                # Remove letters in the first instance of the pattern from the currently used alphabet.
-                for letter in [letter.upper() for letter in set([pos[0] for pos in split_repeat])]:
-                    current_alphabet.remove(letter)
-                # Add the head and then the letters from the first instance to out_pattern.
-                out_rhyme_pattern.extend(form[1])
-                out_rhyme_pattern.extend([letter[0].upper() for letter in split_repeat])
-                poem_remaining_lines -= len(split_repeat)
-                last_repeat = []
-                # Repeat the core pattern the appropriate number of times.
-                for i in range(0, (poem_remaining_lines // len(split_repeat))):
-                    next_input = split_repeat[:]
-                    for index, pos in enumerate(next_input):
-                        if pos[-1:].isdigit():
-                            if last_repeat:
-                                next_input[index] = last_repeat[int(pos[-1:]) - 1].upper()
-                            else:
-                                next_input[index] = split_repeat[int(pos[-1:]) - 1].upper()
-                        elif pos.islower():
-                            replacements = [index2 for index2, item in enumerate(split_repeat) if item == pos]
-                            for replacement in replacements:
-                                next_input[replacement] = current_alphabet[0]
-                            current_alphabet.remove(current_alphabet[0])
-                        # If we have used all of the letters, we starting using Aa Ab ... Ba ... Aaa.
-                        if not current_alphabet:
-                            prime_letter = alphabet[alphabet_count % 26]
-                            for letter in alphabet:
-                                current_alphabet.append(prime_letter + letter.lower() * ((alphabet_count // 26) + 1))
-                            alphabet_count += 1
-                    last_repeat = next_input[:]
-                    out_rhyme_pattern.extend(next_input)
-                # Handle the tail if we have one.
-                if form[3]:
-                    split_tail = re.findall('([a-zA-Z]\d?)', form[3])
-                    for index, pos in enumerate(split_tail):
-                        if pos[-1:].isdigit():
-                            split_tail[index] = last_repeat[int(pos[-1:]) - 1].upper()
-                        elif pos.islower():
-                            replacements = [index2 for index2, item in enumerate(split_tail) if item == pos]
-                            for replacement in replacements:
-                                split_tail[replacement] = current_alphabet[0]
-                            current_alphabet.remove(current_alphabet[0])
-                        if not current_alphabet:
-                            prime_letter = alphabet[alphabet_count % 26]
-                            for letter in alphabet:
-                                current_alphabet.append(prime_letter + letter.lower() * ((alphabet_count // 26) + 1))
-                            alphabet_count += 1
-                    out_rhyme_pattern.extend(split_tail)
-            if out_rhyme_pattern:
-                out_rhyme_pattern = [''.join(out_rhyme_pattern)]
-            else:
-                out_rhyme_pattern = []
-            if out_syllable_pattern:
-                out_syllable_pattern = ' '.join(out_syllable_pattern)
-            else:
-                out_syllable_pattern = []
-            out_forms.append([form[0], out_rhyme_pattern, out_syllable_pattern, poem_lines])
-    return out_forms
 
 
 # Attempts to maximize matches across tokens for feature.
