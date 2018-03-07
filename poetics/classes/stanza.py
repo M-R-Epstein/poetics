@@ -38,44 +38,15 @@ class Stanza:
         self.ini_allit = None
 
     def get_rhymes(self):
-        rhyme_features = ['p_rhyme', 'r_rhyme', 'str_vowel', 'str_fin_con', 'str_bkt_cons', 'str_ini_con',
-                          'word_ini_con']
-        for feature in rhyme_features:
+        rhyme_features = [('p_rhyme', 'p_rhymes'), ('r_rhyme', 'r_rhymes'), ('str_vowel', 'asso'),
+                          ('str_fin_con', 'cons'), ('str_bkt_cons', 'bkt_cons'), ('str_ini_con', 'str_allit'),
+                          ('word_ini_con', 'ini_allit')]
+        for feature, attr_name in rhyme_features:
             scm = feats_to_scheme([getattr(line.final_word.pronunciations[0], feature) for line in self.lines], True)
             iscm = feats_to_scheme([getattr(line.initial_word.pronunciations[0], feature) for line in self.lines], True)
-            setattr(self, 'scm_' + feature, scm)
-            setattr(self, 'scm_i_' + feature, iscm)
+            setattr(self, 'scm_' + attr_name, scm)
+            setattr(self, 'scm_i_' + attr_name, iscm)
 
-
-
-        # self.scm_p_rhymes = feats_to_scheme([line.final_word.pronunciations[0].p_rhyme for line in self.lines],
-        #                                     True, False)
-        # self.scm_r_rhymes = feats_to_scheme([line.final_word.pronunciations[0].r_rhyme for line in self.lines],
-        #                                     True, False)
-        # self.scm_asso = feats_to_scheme([line.final_word.pronunciations[0].str_vowel for line in self.lines],
-        #                                 True, False)
-        # self.scm_cons = feats_to_scheme([line.final_word.pronunciations[0].str_fin_con for line in self.lines],
-        #                                 True, False)
-        # self.scm_bkt_cons = feats_to_scheme([line.final_word.pronunciations[0].str_bkt_cons for line in self.lines],
-        #                                     True, False)
-        # self.scm_str_allit = feats_to_scheme([line.final_word.pronunciations[0].str_ini_con for line in self.lines],
-        #                                      True, False)
-        # self.scm_ini_allit = feats_to_scheme([line.final_word.pronunciations[0].word_ini_con for line in self.lines],
-        #                                      True, False)
-        # self.scm_i_p_rhymes = feats_to_scheme([line.initial_word.pronunciations[0].p_rhyme for line in self.lines],
-        #                                       True, False)
-        # self.scm_i_r_rhymes = feats_to_scheme([line.initial_word.pronunciations[0].r_rhyme for line in self.lines],
-        #                                       True, False)
-        # self.scm_i_asso = feats_to_scheme([line.initial_word.pronunciations[0].str_vowel for line in self.lines],
-        #                                   True, False)
-        # self.scm_i_cons = feats_to_scheme([line.initial_word.pronunciations[0].str_fin_con for line in self.lines],
-        #                                   True, False)
-        # self.scm_i_bkt_cons = feats_to_scheme([line.initial_word.pronunciations[0].str_bkt_cons for line in self.lines],
-        #                                       True, False)
-        # self.scm_i_str_allit = feats_to_scheme([line.initial_word.pronunciations[0].str_ini_con for line in self.lines],
-        #                                        True, False)
-        # self.scm_i_ini_allit = feats_to_scheme([line.initial_word.pronunciations[0].word_ini_con for line in self.lines],
-        #                                        True, False)
 
     def get_form(self):
         # Create a list of syllables per line.
