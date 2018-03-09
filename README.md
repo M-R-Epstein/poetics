@@ -1,80 +1,130 @@
-# poetics
-## Requirements
-coloredlogs==9.0 (optional)  
-nltk==3.2.5  
-nltk corpora: cmudict, wordnet, words  
-pyenchant==2.0.0  
-python-Levenshtein==0.12.0  
-spacy==>2.0.0,<3.0.0  
-model: en_core_web_sm  
-## Info
+# Poetics  
+- [Introduction](#introduction)
+- [Documentation](#documentation)
+  - [Requirements](#requirements)
+  - [Usage](#usage)
+    - [create_poem()](#create_poem)
+    - [Poem methods](#poem-methods)
+      - [get_rhymes()](#get_rhymes)
+      - [get_sonic_features()](#get_sonic_features)
+      - [get_sight_features()](#get_sight_features)
+      - [get_pos()](#get_pos)
+      - [get_scansion()](#get_scansion)
+      - [get_meter()](#get_meter)
+      - [get_meter_v_scansion()](#get_meter_v_scansion)
+      - [get_form()](#get_form)
+      - [record()](#record)
+    - [process_poems()](#process_poems)
+  - [Example](#example)
+- [Licence](#licence)
+
+---
+
+# Introduction  
+Poetics does things with poems. Some kind of actual introduction goes here. 
+
+---
+# Documentation
+## [Requirements](requirements.txt)  
+* **[coloredlogs](https://pypi.python.org/pypi/coloredlogs)** (optional)  
+* **[nltk](https://pypi.python.org/pypi/nltk)**  
+* **[pyenchant](https://pypi.python.org/pypi/pyenchant)**  
+* **[python-Levenshtein](https://pypi.python.org/pypi/python-Levenshtein/)**  
+* **[spaCy](https://pypi.python.org/pypi/spacy)**  
+## Usage
 ### create_poem()
 ```python 
 create_poem(file, title=None, author=None, directory=poem_directory) 
 ```
-Makes a poem object. File should be a text file with a poem in it.  Default directory is /poems.
+Makes a poem object. `file` should be the name of a text file with a poem in it.  `directory` optionally specifies the directory 
+that the poem is in; default is `/poems`.
 
-**Poem Methods:**  
+Will automatically assign a title and author to the poem if the name of the text file provided is formatted as `<poem name>-<author name>.txt` (e.g. `song on may morning-john milton.txt`).
+`title` and `author` can optionally be entered manually to provide a title for the poem and a name for the poem's author as strings.
+
+
+### Poem methods  
+#### get_rhymes()  
 ```python
- get_rhymes()
+get_rhymes(self)
 ``` 
->Gets poem and stanza end rhyme scheme(s), head rhyme scheme(s), end assonance scheme(s), and end consonance scheme(s). 
+Looks for rhyme schemes for the poem (as a whole) and for stanzas individually. Rhyme types checked are rich rhyme, perfect rhyme, near rhyme, assonance, consonance, bracket consonance, stressed-syllable alliteration, and word-initial alliteration. Potential rhyme schemes are evaluated for line initial and line final words.
 
+#### get_sonic_features()
 ```python
- get_sonic_features()
+get_sonic_features(self)
 ``` 
->Gets stanza internal alliteration (word initial), stressed alliteration (stressed syllable initial), assonance, consonance, and bracket consonance.
+Gets stanza internal sonic features.
 
+#### get_sight_features()
 ```python
-get_pos()
+get_sight_features(self)
+``` 
+Attempts to identify sight-level features of the poem (e.g. acrostics).
+
+#### get_pos()
+```python
+get_pos(self)
 ```
->Gets part of speech tags. 
+Gets part of speech tags for the poem.
 
+#### get_scansion()  
 ```python
-get_scansion()  
+get_scansion(self)  
 ```
->Calculates scansion.
+Gets a scansion for the poem.
 
+#### get_meter()
 ```python
-get_meter_v_scansion()  
-```
->Gets a comparison between the calculated scansion and the apparent meter(s).
-
-```python
-get_meter()
+get_meter(self)
 ```  
-> Identifies the apparent meters.
+Gets a best guess at the poem's meter(s).
 
+#### get_meter_v_scansion()  
 ```python
-get_form()
+get_meter_v_scansion(self)  
 ```
->Attempts to identify poetic and stanzaic forms.
+Logs a comparison between the calculated meter and calculated scansion.
 
+#### get_form()
 ```python
-record(outputfile='output.csv')
+get_form(self)
 ```
->Appends poem attributes to a csv file. Accepts a csv file as an argument, defaults to output.csv.
+Attempts to identify the poetic and stanzaic form(s) of the poem.
+
+#### record()
+```python
+record(self, outputfile='output.csv')
+```
+Appends poem attributes to a csv file. `outputfile` optionally specifies a csv file to write to.
+Defaults to `output.csv`.
 
 ### process_poems()
 ```python
-process_poems(directory=poem_directory)
+process_poems(directory=config.poem_directory, outputfile='output.csv')
 ```
-Batch processes a directory full of poems. Default directory is /poems.
+Runs the above mentioned methods on all poems in a directory (including its sub-directories), including `record`. 
+`directory` defaults to `/poems` if no directory argument is supplied. Output is written to `output.csv` by default. 
 
-## Usage
+
+## [Example](example.py)
 ```python
 import poetics
 
-# Single Poem operations.
 poem = poetics.create_poem('when my light is spent-john milton.txt')
+
 poem.get_rhymes()
 poem.get_sonic_features()
+poem.get_sight_features()
 poem.get_pos()
 poem.get_scansion()
-poem.get_meter_v_scan()
 poem.get_meter()
+poem.get_meter_v_scan()
 poem.get_form()
-
-# Batch operations.
-poetics.process_poems()
+poem.record()
 ```
+
+
+---
+# Licence
+Some kind of license.
