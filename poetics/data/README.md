@@ -6,7 +6,7 @@
 - [stanza_forms.json](#stanza_formsjson)  
 ---
 
-# poem_forms.json
+# [poem_forms.json](poem_forms.json)
 Made up of two lists and a dictionary: poem forms, repeating poem forms, and names by stanza.
 
 ## Forms
@@ -98,7 +98,7 @@ of the given type. Can be empty (`""`), in which case the name of the stanza for
 
 ---
 
-# stanza_forms.json
+# [stanza_forms.json](stanza_forms.json)
 A list of stanzaic forms and their attributes for identification.
 ```json 
 ["Count Up", [], ["1 2 3 4 5 6 7 8 9 10"], [], 10],
