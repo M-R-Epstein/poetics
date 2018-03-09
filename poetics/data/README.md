@@ -150,9 +150,9 @@ This is a dictionary rather than a list because cmudict records certain word end
 ## Onomatopoeias
 A list of words that are (or are potentially) onomatopoetic.
 ```json 
-    "beep",
-    "beeped",
-    "beeping",
-    "beeps",
-    "belch",
+"beep",
+"beeped",
+"beeping",
+"beeps",
+"belch",
 ```
