@@ -1,3 +1,7 @@
+# Data Specifications
+
+---
+
 # poem_forms.json
 Made up of two lists and a dictionary: poem forms, repeating poem forms, and poem names by stanza.
 
