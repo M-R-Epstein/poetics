@@ -3,7 +3,11 @@
   * [Forms](#forms)  
   * [Repeating forms](#repeating-forms)  
   * [Names by stanza](#names-by-stanza)  
-- [stanza_forms.json](#stanza_formsjson)  
+- [stanza_forms.json](#stanza_formsjson)
+- [sonic_features.json](#sonic_featuresjson)
+  * [Endings](#endings)  
+  * [onomatopoeias](#onomatopoeias)  
+
 ---
 
 # [poem_forms.json](poem_forms.json)
@@ -128,3 +132,27 @@ in the same file. Can be empty.
 
 #### Line count (`int`)  
 The number of lines in the form.
+
+---
+
+# [sonic_features.json](sonic_features.json)
+Made up of two lists: endings, and onomatopoeias.
+## Endings
+A dictionary of word endings for use in identifying near rhyme. Each entry is keyed with a simple (non-syllabified) string with space-separated phonemes
+which correspond to a given word ending. The values are a string identifying that particular ending for matching purposes.
+This is a dictionary rather than a list because cmudict records certain word endings inconsistently.
+```json 
+"AH JH": "age",
+"AH JH AH Z": "ages",
+"AH G AO G": "agog",
+"AH G AO G Z": "agogs",
+```
+## Onomatopoeias
+A list of words that are (or are potentially) onomatopoetic.
+```json 
+    "beep",
+    "beeped",
+    "beeping",
+    "beeps",
+    "belch",
+```
