@@ -1,6 +1,7 @@
 # Poetics  
 - [Introduction](#introduction)
 - [Documentation](#documentation)
+  - [Getting started](#getting-started)
   - [Requirements](#requirements)
   - [Usage](#usage)
     - [create_poem()](#create_poem)
@@ -15,8 +16,7 @@
       - [get_form()](#get_form)
       - [record()](#record)
     - [process_poems()](#process_poems)
-  - [Example](#example)
-- [Licence](#licence)
+- [License](#license)
 
 ---
 
@@ -25,12 +25,30 @@ Poetics does things with poems. Some kind of actual introduction goes here.
 
 ---
 # Documentation
+## [Getting started](example.py)
+```python
+import poetics
+
+poem = poetics.create_poem('when my light is spent-john milton.txt')
+
+poem.get_rhymes()
+poem.get_sonic_features()
+poem.get_sight_features()
+poem.get_pos()
+poem.get_scansion()
+poem.get_meter()
+poem.get_meter_v_scan()
+poem.get_form()
+poem.record()
+```
+---
 ## [Requirements](requirements.txt)  
 * **[coloredlogs](https://pypi.python.org/pypi/coloredlogs)** (optional)  
 * **[nltk](https://pypi.python.org/pypi/nltk)**  
 * **[pyenchant](https://pypi.python.org/pypi/pyenchant)**  
 * **[python-Levenshtein](https://pypi.python.org/pypi/python-Levenshtein/)**  
 * **[spaCy](https://pypi.python.org/pypi/spacy)**  
+---
 ## Usage
 ### create_poem()
 ```python 
@@ -107,24 +125,6 @@ Runs the above mentioned methods on all poems in a directory (including its sub-
 `directory` defaults to `/poems` if no directory argument is supplied. Output is written to `output.csv` by default. 
 
 
-## [Example](example.py)
-```python
-import poetics
-
-poem = poetics.create_poem('when my light is spent-john milton.txt')
-
-poem.get_rhymes()
-poem.get_sonic_features()
-poem.get_sight_features()
-poem.get_pos()
-poem.get_scansion()
-poem.get_meter()
-poem.get_meter_v_scan()
-poem.get_form()
-poem.record()
-```
-
-
 ---
-# Licence
+# License
 Some kind of license.
