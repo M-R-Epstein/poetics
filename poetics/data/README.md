@@ -2,7 +2,7 @@
 ## poem_forms.json
 Made up of a list with three sublists: poem forms, repeating poem forms, and poem names by stanza.
 
-###Poem forms
+### Poem forms
 Provides the identification features for a poetic forms. For example:
 ```python 
 ["French sonnet", ["ABBAABBACCDEDE", "ABBAABBACCDCCD", "ABBAABBACCDEED"], ["10", "12"], 14]
@@ -16,7 +16,7 @@ list of strings - Listing of possible syllable per line arrangements as strings,
 single value is provided, this value is interpreted as applying to all lines. So ["10", "12"] in the example indicates
 that a French sonnet either has all lines of 10 syllables or all lines of 12 syllables.
 
-###Repeating poem forms
+### Repeating poem forms
 Provides the identification features for a poetic forms with repeating elements. For example:
 ```python 
 ["Terza Rima","","a2ba2","a2a2","","",""],
