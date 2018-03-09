@@ -1,9 +1,13 @@
 # Data Specifications
-
+- [poem_forms.json](#poem_formsjson)  
+  * [Forms](#forms)  
+  * [Repeating forms](#repeating-forms)  
+  * [Names by stanza](#names-by-stanza)  
+- [stanza_forms.json](#stanza_formsjson)  
 ---
 
 # poem_forms.json
-Made up of two lists and a dictionary: poem forms, repeating poem forms, and poem names by stanza.
+Made up of two lists and a dictionary: poem forms, repeating poem forms, and names by stanza.
 
 ## Forms
 Provides the identification features for poetic forms.
@@ -74,7 +78,7 @@ fashion as the head.
 This is the final segment, which is not repeated, of the syllable per line scheme for a given form.
 Recorded in the same fashion as the head.  
 
-## Poem names by stanza
+## Names by stanza
 A dictionary that provides the name that should be assigned to a poem which is made up exclusively of a single type of 
 stanza.
 ```json 
