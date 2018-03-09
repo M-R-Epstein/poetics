@@ -3,7 +3,7 @@
 Made up of two lists and a dictionary: poem forms, repeating poem forms, and poem names by stanza.
 
 ### Poem forms
-Provides the identification features for a poetic forms. For example:
+Provides the identification features for poetic forms. For example:
 ```python 
 ["French sonnet", ["ABBAABBACCDEDE", "ABBAABBACCDCCD", "ABBAABBACCDEED"], ["10", "12"], 14]
 ```
@@ -18,8 +18,11 @@ list of strings - Listing of possible syllable per line arrangements as strings,
 single value is provided, this value is interpreted as applying to all lines. So `["10", "12"]` in the example indicates
 that a French sonnet either has all lines of 10 syllables or all lines of 12 syllables.
 
+**Line count**  
+int - The number of lines in the form.  
+
 ### Repeating poem forms
-Provides the identification features for a poetic forms with repeating elements. For example:
+Provides the identification features for poetic forms with repeating elements. For example:
 ```python 
 ["Terza Rima","","a2ba2","a2a2","","",""],
 ```
@@ -33,8 +36,9 @@ this segment is always the same, it should consist of capital letters (`AA` for 
 **Rhyme core**  
 string - This is the segment of the rhyme scheme for a given repetitious form that is repeated any number of times.
 This segment uses a similar syntax to standard rhyme notation schemes. Capital letters are always the same in all 
-repetitions. Lower case letters are replaced with the next available alphabet in each repetition. Lower case letters 
-which are followed by a digit copy the letter from the preceeding stanza in the position specified by the digit.  
+repetitions. Lower case letters are replaced with the next available letter in the alphabet in each repetition. Lower 
+case letters which are followed by a digit copy the letter from the preceeding stanza in the position specified by the 
+digit.  
 
 In the case of Terza Rima (as above), this segment is `a2ba2`. For the first instance of the repeating segment, all 
 positions marked with `a` will be replaced with the next available letter in the alphabet, and then all positions marked
@@ -48,7 +52,7 @@ uses the same syntax as the rhyme core, referencing the final repetition of the 
 
 **Syllables head**  
 string - This is the initial segment of the syllable per line scheme for a given form which is not repeated.
-This is recorded as a string integers separated by spaces indicating the syllable lengths.  
+This is recorded as a string of integers separated by spaces indicating the syllable lengths.  
 
 **Syllables core**  
 string - This is the segment of the syllable per line scheme for a given form that is repeated. Recorded in the same
@@ -64,7 +68,7 @@ stanza.
 ```python 
 "Ballade Stanza": ["Huitain", "Ballade Stanzas"]
 ```
-**Stanza type**
+**Stanza type**  
 string - the key for each entry is the name of the stanzaic form.  
 
 **Single stanza poetic form**  
