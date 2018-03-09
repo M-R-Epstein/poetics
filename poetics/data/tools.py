@@ -5,7 +5,7 @@ import os
 from nltk.corpus import cmudict
 
 import poetics.config as config
-from poetics.text.syllabify.syllabifier import load_language, stringify, syllabify
+from poetics.data.syllabify.syllabifier import load_language, stringify, syllabify
 
 with open(os.path.join(config.directory, config.cmudict_path)) as file:
     cmu_dict = json.load(file)
@@ -17,12 +17,21 @@ with open(os.path.join(config.directory, config.syllabified_path)) as file:
 # Writes a wordlist from CMUdict to text/wordlist.txt
 def write_cmu_wordlist():
 
-    wordlist = cmudict.words()
+    wordlist = sorted(list(set(cmudict.words())))
 
     with open(config.directory + '/text/wordlist.txt', 'w') as f:
         for index, items in enumerate(wordlist):
             wordlist[index] = wordlist[index] + "\n"
         f.writelines(wordlist)
+
+
+# Writes a wordlist from CMUdict to text/wordlist.json
+def write_cmu_wordlist_json():
+
+    wordlist = sorted(list(set(cmudict.words())))
+
+    with open(config.directory + '/text/wordlist.json', 'w') as f:
+        json.dump(wordlist, f, sort_keys=True, separators=(',', ':'))
 
 
 # Syllabifies cmudict and writes it as cmudict_syllabified.json

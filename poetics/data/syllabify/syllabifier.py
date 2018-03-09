@@ -1,43 +1,36 @@
-# Modified P2TK syllabifier for python 3.x.
-# Original by Joshua Tauberer, based on code originally written by Charles Yang.
-#
-# The syllabifier requires a language configuration which specifies
-# the set of phonemes which are consonants and vowels (syllable nuclei),
-# as well as the set of permissible onsets.
-#
-# Then call syllabify with a language configuration object and a word
-# represented as a string (or list) of phonemes.
-#
-# Returned is a data structure representing the syllabification.
-# What you get is a list of syllables. Each syllable is a tuple
-# of (stress, onset, nucleus, coda). stress is None or an integer stress
-# level attached to the nucleus phoneme on input. onset, nucleus,
-# and coda are lists of phonemes.
-#
-# Example:
-#
-# import syllabifier
-# language = syllabifier.English # or: syllabifier.load_language("english.cfg")
-# syllables = syllabifier.syllabify(language, "AO2 R G AH0 N AH0 Z EY1 SH AH0 N Z")
-#
-# The syllables variable then holds the following:
-# [ (2, [],     ['AO'], ['R']),
-#   (0, ['G'],  ['AH'], []),
-#   (0, ['N'],  ['AH'], []),
-#   (1, ['Z'],  ['EY'], []),
-#   (0, ['SH'], ['AH'], ['N', 'Z'])]
-#
-# You could process that result with this type of loop:
-#
-# for stress, onset, nucleus, coda in syllables :
-#   print " ".join(onset), " ".join(nucleus), " ".join(coda)
-#
-# You can also pass the result to stringify to get a nice printable
-# representation of the syllables, with periods separating syllables:
-#
-# print syllabify.stringify(syllables)
-#
-#########################################################################
+"""P2TK syllabifier for python 3.x.
+Modified from python 2.x P2TK syllabifier by Joshua Tauberer, based on code originally written by Charles Yang.
+
+The syllabifier requires a language configuration which specifies the set of phonemes which are consonants and vowels
+(syllable nuclei), as well as the set of permissible onsets.
+
+Then call syllabify with a language configuration object and a word represented as a string (or list) of phonemes.
+
+Returned is a data structure representing the syllabification. What you get is a list of syllables. Each syllable is a
+tuple of (stress, onset, nucleus, coda). stress is None or an integer stress level attached to the nucleus phoneme on
+input. onset, nucleus, and coda are lists of phonemes.
+
+Example:
+import syllabifier
+language = syllabifier.English # or: syllabifier.load_language("english.cfg")
+syllables = syllabifier.syllabify(language, "AO2 R G AH0 N AH0 Z EY1 SH AH0 N Z")
+
+The syllables variable then holds the following:
+[ (2, [],     ['AO'], ['R']),
+  (0, ['G'],  ['AH'], []),
+  (0, ['N'],  ['AH'], []),
+  (1, ['Z'],  ['EY'], []),
+  (0, ['SH'], ['AH'], ['N', 'Z'])]
+
+You could process that result with this type of loop:
+
+for stress, onset, nucleus, coda in syllables :
+  print " ".join(onset), " ".join(nucleus), " ".join(coda)
+
+You can also pass the result to stringify to get a nice printable representation of the syllables, with periods
+separating syllables:
+print syllabify.stringify(syllables)
+"""
 import logging
 
 
