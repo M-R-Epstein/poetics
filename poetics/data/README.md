@@ -1,6 +1,6 @@
 # Data specifications
 ## poem_forms.json
-Made up of a list with three sublists: poem forms, repeating poem forms, and poem names by stanza.
+Made up of two lists and a dictionary: poem forms, repeating poem forms, and poem names by stanza.
 
 ### Poem forms
 Provides the identification features for a poetic forms. For example:
@@ -8,12 +8,14 @@ Provides the identification features for a poetic forms. For example:
 ["French sonnet", ["ABBAABBACCDEDE", "ABBAABBACCDCCD", "ABBAABBACCDEED"], ["10", "12"], 14]
 ```
 **Form name**  
-string - name of the poetic form  
+string - Name of the poetic form.
+
 **Rhyme schemes**  
-list of strings - a list of the possible rhyme schemes  
+list of strings - A list of the possible rhyme schemes (without spaces).
+
 **Syllables**  
 list of strings - Listing of possible syllable per line arrangements as strings, with values separated by spaces. If a 
-single value is provided, this value is interpreted as applying to all lines. So ["10", "12"] in the example indicates
+single value is provided, this value is interpreted as applying to all lines. So `["10", "12"]` in the example indicates
 that a French sonnet either has all lines of 10 syllables or all lines of 12 syllables.
 
 ### Repeating poem forms
@@ -26,7 +28,7 @@ string - name of the poetic form
 
 **Rhyme head**  
 string - This is the initial segment of the rhyme scheme for a given repetitious form which is not repeated. Because 
-this segment is always the same, it should consist of capital letters ("AA" for example).  
+this segment is always the same, it should consist of capital letters (`AA` for example).  
 
 **Rhyme core**  
 string - This is the segment of the rhyme scheme for a given repetitious form that is repeated any number of times.
@@ -55,3 +57,20 @@ fashion as the head.
 **Syllables tail**  
 string - This is the final segment of the syllable per line scheme for a given form which is not repeated.
 Recorded in the same fashion as the head.  
+
+### Poem names by stanza
+A dictionary that provides the name that should be assigned to a poem which is made up exclusively of a single type of 
+stanza.
+```python 
+"Ballade Stanza": ["Huitain", "Ballade Stanzas"]
+```
+**Stanza type**
+string - the key for each entry is the name of the stanzaic form.  
+
+**Single stanza poetic form**  
+string - Indicates the name that should be assigned to a poem's form if it is entire made up of a single instance
+of a kind of stanza.  
+
+**Multiple stanza poetic form**   
+string - Indicates the name that should be assigned to a poem's form if it is exclusively composed of multiple stanazas 
+of the given type.
