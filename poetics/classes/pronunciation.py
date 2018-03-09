@@ -1,12 +1,14 @@
 from collections import namedtuple
 
+from poetics.lookups import get_word_endings
+
 Syllable = namedtuple('Syllable', 'stress, onset, nucleus, coda')
 
 
 class Pronunciation:
     def __init__(self, syllables, parent=None):
         self.parent = parent
-
+        self.plaintext = None
         self.syllables = []
         self.stress = ''
         self.stress_index = None
@@ -20,6 +22,7 @@ class Pronunciation:
         self.p_rhyme = None  # Perfect rhyme.
         self.p_rhyme_type = None  # Perfect rhyme type. Feminine (F) or masculine (M).
         self.r_rhyme = None  # Rich rhyme.
+        self.n_rhyme = None  # Near rhyme.
 
         # Future: light rhyme (stressed syllables with unstressed syllables).
         # Future: unstressed rhyme (unstressed syllables with unstressed syllables).
@@ -42,6 +45,19 @@ class Pronunciation:
                 if syllable.coda and syllable.onset:
                     self.str_bkt_cons = ' '.join([syllable.onset, syllable.coda])
 
+        # Create plaintext pronunciation.
+        plain = []
+        for syllable in self.syllables:
+            plain.append(syllable.onset or None)
+            plain.append(syllable.nucleus or None)
+            plain.append(syllable.coda or None)
+        self.plaintext = ' '.join(phonemes for phonemes in plain if phonemes)
+
+        # Get word endings (used for near rhyme).
+        endings = get_word_endings(self.plaintext)
+        if endings:
+            self.n_rhyme = tuple(endings)
+
         perfect_rhyme = []
         rich_rhyme = []
         for syllable in self.syllables[self.stress_index:]:
@@ -52,3 +68,9 @@ class Pronunciation:
             rich_rhyme.extend([syllable.onset, syllable.nucleus, syllable.coda])
         self.r_rhyme = ' '.join([segment for segment in rich_rhyme if segment])
         self.p_rhyme = ' '.join([segment for segment in perfect_rhyme if segment])
+
+    def __str__(self) -> str:
+        return self.plaintext
+
+    def __repr__(self) -> str:
+        return '%s (%s)' % (super().__repr__(), self.plaintext)

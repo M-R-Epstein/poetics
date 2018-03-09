@@ -10,6 +10,12 @@ class Sentence:
         self.tokens = tokens
         self.word_tokens = [token for token in tokens if not token.is_punct and not token.is_wspace]
 
+    def __str__(self) -> str:
+        return ''.join([token.token for token in self.tokens])
+
+    def __repr__(self) -> str:
+        return '%s (%s)' % (super().__repr__(), ' '.join([token.token for token in self.word_tokens[0:2]]))
+
     def get_pos(self):
         text = ''.join([token.token for token in self.tokens]).replace('\n', ' ')
         sentence = config.spacy_model(text)

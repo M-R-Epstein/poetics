@@ -9,12 +9,11 @@ class Stanza:
         self.tokens = tokens
         self.word_tokens = [token for token in tokens if not token.is_punct and not token.is_wspace]
         self.lines = lines
-
         self.line_lengths = []
         self.meters = None
         self.form = None
 
-        # Final rhyme types.
+        # Line final rhyme schemes.
         self.scm_p_rhymes = None
         self.scm_r_rhymes = None
         self.scm_asso = None
@@ -22,7 +21,8 @@ class Stanza:
         self.scm_bkt_cons = None
         self.scm_str_allit = None
         self.scm_ini_allit = None
-        # Init rhyme types.
+
+        # Line initial rhyme schemes.
         self.scm_i_p_rhymes = None
         self.scm_i_r_rhymes = None
         self.scm_i_asso = None
@@ -31,11 +31,21 @@ class Stanza:
         self.scm_i_str_allit = None
         self.scm_i_ini_allit = None
 
+        # Stanza internal sonic features.
+        self.p_rhyme = None
+        self.r_rhyme = None
+        self.n_rhyme = None
         self.asso = None
         self.cons = None
         self.bkt_cons = None
         self.str_allit = None
         self.ini_allit = None
+
+    def __str__(self) -> str:
+        return ''.join([token.token for token in self.tokens])
+
+    def __repr__(self) -> str:
+        return '%s (%s)' % (super().__repr__(), ' '.join([token.token for token in self.word_tokens[0:2]]))
 
     def get_rhymes(self):
         rhyme_features = [('p_rhyme', 'p_rhymes'), ('r_rhyme', 'r_rhymes'), ('str_vowel', 'asso'),
@@ -46,7 +56,6 @@ class Stanza:
             iscm = feats_to_scheme([getattr(line.initial_word.pronunciations[0], feature) for line in self.lines], True)
             setattr(self, 'scm_' + attr_name, scm)
             setattr(self, 'scm_i_' + attr_name, iscm)
-
 
     def get_form(self):
         # Create a list of syllables per line.
