@@ -1,6 +1,6 @@
 # Poetics  
 - [Introduction](#introduction)
-- [Documentation](#documentation)
+- [About](#about)
   - [Getting started](#getting-started)
   - [Requirements](#requirements)
   - [Usage](#usage)
@@ -24,7 +24,7 @@
 Poetics does things with poems. Some kind of actual introduction goes here. 
 
 ---
-# Documentation
+# About
 ## [Getting started](example.py)
 ```python
 import poetics
@@ -40,25 +40,25 @@ poem.get_meter()
 poem.get_meter_v_scan()
 poem.get_form()
 poem.record()
-```
----
+```  
+
 ## [Requirements](requirements.txt)  
 * **[coloredlogs](https://pypi.python.org/pypi/coloredlogs)** (optional)  
 * **[nltk](https://pypi.python.org/pypi/nltk)**  
 * **[pyenchant](https://pypi.python.org/pypi/pyenchant)**  
 * **[python-Levenshtein](https://pypi.python.org/pypi/python-Levenshtein/)**  
 * **[spaCy](https://pypi.python.org/pypi/spacy)**  
----
+
 ## Usage
 ### create_poem()
 ```python 
-create_poem(file, title=None, author=None, directory=poem_directory) 
+create_poem(filename, title=None, author=None, directory=config.poem_directory)
 ```
-Makes a poem object. `file` should be the name of a text file with a poem in it.  `directory` optionally specifies the directory 
-that the poem is in; default is `/poems`.
+Makes a `Poem` object. `file` should be the name of a text file with a poem in it.  `directory` optionally specifies the directory 
+that the file is in (defaults to `poem_directory` set in [config.py](/poetics/config.py)).
 
-Will automatically assign a title and author to the poem if the name of the text file provided is formatted as `<poem name>-<author name>.txt` (e.g. `song on may morning-john milton.txt`).
-`title` and `author` can optionally be entered manually to provide a title for the poem and a name for the poem's author as strings.
+`create_poem` will automatically assign a title and author to the poem if the name of the text file provided is formatted as `<poem name>-<author name>.txt` (e.g. `song on may morning-john milton.txt`).
+`title` and `author` can optionally be entered manually to provide a title for the poem and a name for the poem's author.
 
 
 ### Poem methods  
@@ -122,7 +122,7 @@ Defaults to `output.csv`.
 process_poems(directory=config.poem_directory, outputfile='output.csv')
 ```
 Runs the above mentioned methods on all poems in a directory (including its sub-directories), including `record`. 
-`directory` defaults to `/poems` if no directory argument is supplied. Output is written to `output.csv` by default. 
+`directory` defaults to `poem_directory` set in [config.py](/poetics/config.py). Output is written to `output_file` by default, also set in [config.py](/poetics/config.py). 
 
 
 ---
