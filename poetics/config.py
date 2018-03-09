@@ -13,20 +13,28 @@ directory = os.path.dirname(__file__)
 poem_directory = '/poems'
 # Default output file.
 output_file = 'output.csv'
-# Name of spacy model to use.
+
+# Path of spacy model to use.
 spacy_model_dir = 'data/spacy/en_core_web_sm'
-# Location for json version of cmudict.
-cmudict_path = 'data/cmudict.json'
-# Location for syllabified version of cmudict.
-syllabified_path = 'data/cmudict_syllabified.json'
-# Location for phoneticized version of cmudict.
-phoneticized_path = 'data/cmudict_phoneticized.json'
-# Location for poem form lists.
+
+# Path of raw cmudict. New versions can be found at
+cmudict_raw_path = 'data/cmudict/cmudict.txt'
+# Path of json version of cmudict.
+cmudict_path = 'data/cmudict/cmudict.json'
+# Path of cmudict wordlist (used by pyEnchant).
+cmudict_wordlist_path = 'data/cmudict/wordlist.txt'
+# Path of json syllabified version of cmudict.
+cmudict_syll_path = 'data/cmudict/cmudict_syll.json'
+# Path of phoneticized version of cmudict.
+cmudict_phonetic_path = 'data/cmudict/phoneticized.json'
+
+# Path of poem form lists.
 poem_forms_path = 'data/poem_forms.json'
-# Location for stanza forms list.
+# Path of stanza forms list.
 stanza_forms_path = 'data/stanza_forms.json'
-# Path for cmudict wordlist.
-cmudict_wordlist_path = 'data/wordlist.txt'
+# Path of sonic_features lists.
+sonic_features_path = 'data/sonic_features.json'
+
 
 ########################################################################################################################
 # Dictionaries
@@ -38,23 +46,6 @@ short_pos_dict = {'NIL': '\"', 'AFX': 'AJ', 'JJ': 'AJ', 'JJR': 'AJ', 'JJS': 'AJ'
                   'RP': 'RT', 'TO': 'RT', 'PRP': 'PRP', 'NNP': 'PRN', 'NNPS': 'PRN', '_SP': 'SP', 'SP': 'SP', '#': 'SM',
                   'SYM': 'SM', 'MD': 'V', 'VB': 'V', 'VBD': 'V', 'VBG': 'V', 'VBN': 'V', 'VBP': 'V', 'VBZ': 'V',
                   'BES': 'V', 'HVS': 'V', 'FW': 'X', 'ADD': 'X', 'GW': 'X', 'XX': 'X', '.': '?'}
-# Rhyme pattern names.
-rhyme_patterns = {'AAA': 'Tercet', 'ABA': 'Tercet', 'AAAA': 'Tanaga', 'AABA': 'Rubaiyat', 'AABB': 'Clerihew',
-                  'ABBA': 'Enclosed', 'ABCB': 'Simple 4-Line', 'AABBA': 'Limerick', 'ABABB': 'Cinquain',
-                  'AAABAB': 'Scottish Stanza', 'AABAAB': 'Caudate Stanza', 'AABCCB': 'Boy Named Sue',
-                  'AABCCD': 'Boy Named Sue', 'ABCBBB': 'The Raven Stanza', 'ABAABBA': 'Rondelet',
-                  'ABABBCC': 'Rhyme Royal', 'ABABCBC': 'Canopus', 'AAABCCCB': 'Ochtfochlach',
-                  'ABAAABAB': 'Rondeau or Triolet', 'ABABABCC': 'Ottava Rima', 'ABBACCAB': 'Coraline',
-                  'ABACADABA': 'Magic 9', 'ABABBCBCC': 'Spenserian Stanza', 'ABABCDECDE': 'Keatsian Ode',
-                  'ABBABAABBA': 'Chaucerian Roundel', 'ABBAABBAABBAA': 'Ballata, Balete, Or Dansa',
-                  'ABCABCDEFDEFD': 'Raconteur', 'ABABBCBCCDCDEE': 'Spenserian Sonnet', 'ABABCDCDEFEFGG': 'Sonnet',
-                  'ABBAABBACDCDCD': 'Petrarchan Sonnet', 'ABBAABBACDECDE': 'Petrarchan Sonnet',
-                  'AAABBCCCBBDDDBB': 'Triple Rebel Round', 'AABBBCCBBBDDBBB': 'Triple Rebel Round',
-                  'AABABBCBCCDCDDDD': 'Stopping By Woods On A Snowy Evening Form', 'ABABCCCCDDEEFFFF': 'Flung',
-                  'ABABCCDDEDEDDEDE': 'Chant Royal', 'ABCABCDEFDEFGHIGG': 'Melodic',
-                  'ABABCCDDEDECCDDEDE': 'Chant Royal', 'BCBACDEFABCBACDEFGG': 'Individualtean',
-                  'ABCCABADEFFEDGGHHIII': 'Fantasy', 'ABABBCCDCDABABBCCDCDABABBCCDCDCCDCD': 'Ballade Supreme',
-                  'ABCDEFFAEBDCCFDABEECBFADDEACFBBDFECADEF': 'Sestina'}
 # Classical meters
 classic_meters = {'1010011001100101': 'choriamb', '10100101010': 'hendecasyllabe', '10100101011': 'hendecasyllabe',
                   '11100101010': 'hendecasyllabe', '11100101011': 'hendecasyllabe', '01010101011': 'hendecasyllabe',
@@ -122,16 +113,27 @@ unstressed_words = ["a", "am", "an", "and", "are", "as", "but", "by", "can", "fo
 ########################################################################################################################
 # Loading
 ########################################################################################################################
+poem_directory = os.path.split(directory)[0] + poem_directory
+
 spacy_model = spacy.load(os.path.join(directory, spacy_model_dir))
+
 enchant_dictionary = enchant.request_pwl_dict(os.path.join(directory, cmudict_wordlist_path))
+
 enchant_english_dictionary = enchant.Dict("en_US")
-with open(os.path.join(directory, phoneticized_path)) as file:
+
+with open(os.path.join(directory, cmudict_phonetic_path)) as file:
     phoneticized_dict = json.load(file)
+
 with open(os.path.join(directory, poem_forms_path)) as file:
     poem_forms_file = json.load(file)
-poem_forms = poem_forms_file[0]
-poem_forms_repeating = poem_forms_file[1]
-poem_forms_stanzaic = poem_forms_file[2]
+poem_forms = poem_forms_file["forms"]
+poem_forms_repeating = poem_forms_file["repeating_forms"]
+poem_forms_stanzaic = poem_forms_file["by_stanza"]
+
 with open(os.path.join(directory, stanza_forms_path)) as file:
     stanza_forms = json.load(file)
-poem_directory = os.path.split(directory)[0] + poem_directory
+
+with open(os.path.join(directory, sonic_features_path)) as file:
+    sonic_features_file = json.load(file)
+word_endings = sonic_features_file["endings"]
+word_endings = sonic_features_file["onomatopoeia"]
