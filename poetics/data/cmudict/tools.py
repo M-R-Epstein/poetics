@@ -11,14 +11,19 @@ cmu_raw_path = os.path.join(config.directory, config.cmudict_raw_path)
 cmu_path = os.path.join(config.directory, config.cmudict_path)
 cmu_wordlist_path = os.path.join(config.directory, config.cmudict_wordlist_path)
 cmu_phonetic_path = os.path.join(config.directory, config.cmudict_phonetic_path)
+alt_spellings_path = os.path.join(config.directory, config.alt_spellings_path)
 
 
 # Processes a raw copy of cmudict (from https://github.com/cmusphinx/cmudict). Creates a .txt wordlist and a json
-# copy of cmudict.
+# copy of cmudict. Also adds spellings from alternate_spellings.json.
 def process_raw_cmudict():
-    with open(cmu_raw_path) as data:
-        raw_cmu = data.readlines()
+    with open(cmu_raw_path, encoding="utf-8") as f:
+        raw_cmu = f.readlines()
 
+    with open(alt_spellings_path, encoding="utf-8") as f:
+        alt_spellings = json.load(f)
+
+    # Turn raw data in dictionary.
     regex = re.compile('\(\d+\)')
     out_dict = {}
     for line in raw_cmu:
@@ -30,13 +35,17 @@ def process_raw_cmudict():
             out_dict[word] = []
         out_dict[word].append(split[1:])
 
+    #  Add words from alternate_spellings.
+    for key, value in alt_spellings.items():
+        out_dict[key] = out_dict[value]
+
     # Write json copy of cmudict.
-    with open(cmu_path, 'w') as f:
+    with open(cmu_path, 'w', encoding="utf-8") as f:
         json.dump(out_dict, f, sort_keys=True, separators=(',', ':'))
 
     # Write wordlist (used by pyEnchant).
     wordlist = sorted([*out_dict])
-    with open(cmu_wordlist_path, 'w') as f:
+    with open(cmu_wordlist_path, 'w', encoding="utf-8") as f:
         f.writelines(line + '\n' for line in wordlist)
 
 
@@ -51,10 +60,10 @@ def phoneticize_cmudict():
                 pron_out.append(stringify(syllabify(language, pron)))
             yield (entry, pron_out)
 
-    with open(cmu_path) as file:
-        cdict = json.load(file)
+    with open(cmu_path, encoding="utf-8") as f:
+        cdict = json.load(f)
 
-    language = load_language(config.directory + "/data/syllabify/english.cfg")
+    language = load_language(config.directory + "/data/cmudict/syllabify/english.cfg")
 
     syll_dict = {entry: pronunciations for entry, pronunciations in syllable_gen(cdict)}
 
@@ -97,10 +106,26 @@ def phoneticize_cmudict():
             out_pronunciations.append(out_pronunciation)
         phoneticized_dict[key] = out_pronunciations
 
-    with open(cmu_phonetic_path, 'w') as f:
+    with open(cmu_phonetic_path, 'w', encoding="utf-8") as f:
         json.dump(phoneticized_dict, f, sort_keys=True, separators=(',', ':'))
+
+
+# Adds some line breaks to the json cmudicts to make them less awful to deal with.
+def pretty_cmudicts():
+    with open(cmu_path, encoding="utf-8") as data:
+        raw_simple = data.read()
+
+    with open(cmu_path, 'w', encoding="utf-8") as f:
+        f.write(re.sub('\]\],', ']],\n', raw_simple))
+
+    with open(cmu_phonetic_path, encoding="utf-8") as data:
+        raw_phonetic = data.read()
+
+    with open(cmu_phonetic_path, 'w', encoding="utf-8") as f:
+        f.write(re.sub('\]\]\],', ']]],\n', raw_phonetic))
 
 
 if __name__ == "__main__":
     process_raw_cmudict()
     phoneticize_cmudict()
+    pretty_cmudicts()
