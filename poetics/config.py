@@ -17,23 +17,24 @@ output_file = 'output.csv'
 # Path of spacy model to use.
 spacy_model_dir = 'data/spacy/en_core_web_sm'
 
-# Path of raw cmudict. New versions can be found at
+# Path of raw cmudict. From https://github.com/cmusphinx/cmudict.
 cmudict_raw_path = 'data/cmudict/cmudict.txt'
 # Path of json version of cmudict.
 cmudict_path = 'data/cmudict/cmudict.json'
 # Path of cmudict wordlist (used by pyEnchant).
 cmudict_wordlist_path = 'data/cmudict/wordlist.txt'
-# Path of json syllabified version of cmudict.
-cmudict_syll_path = 'data/cmudict/cmudict_syll.json'
 # Path of phoneticized version of cmudict.
 cmudict_phonetic_path = 'data/cmudict/phoneticized.json'
 
-# Path of poem form lists.
+# Path of alternate spellings file.
+alt_spellings_path = 'data/alternate_spellings.json'
+# Path of poem forms file.
 poem_forms_path = 'data/poem_forms.json'
-# Path of stanza forms list.
-stanza_forms_path = 'data/stanza_forms.json'
-# Path of sonic_features lists.
+# Path of sonic features file.
 sonic_features_path = 'data/sonic_features.json'
+# Path of stanza forms file.
+stanza_forms_path = 'data/stanza_forms.json'
+
 
 
 ########################################################################################################################
@@ -136,4 +137,4 @@ with open(os.path.join(directory, stanza_forms_path)) as file:
 with open(os.path.join(directory, sonic_features_path)) as file:
     sonic_features_file = json.load(file)
 word_endings = sonic_features_file["endings"]
-word_endings = sonic_features_file["onomatopoeia"]
+onomatopoetic_words = sonic_features_file["onomatopoeia"]
