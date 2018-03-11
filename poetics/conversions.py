@@ -8,7 +8,7 @@ from poetics.patterning import assign_letters_to_dict
 ########################################################################################################################
 # Tokenizing
 ########################################################################################################################
-# Tokenizes text into individual words.
+# Tokenizes text into words.
 def tokenize(line):
     tokenized = []
 
@@ -89,7 +89,7 @@ def full_tokenize(text):
     # List of abbreviations that should be considered a single token.
     abbre = ('a\.m\.|p\.m\.|'
              '[vV][sS]\.|'
-             '[eE]\.g\.|[iI]\.e\.|'
+             '[eE]\.[gG]\.|[iI]\.[eE]\.|'
              'Mt\.|'
              'Mont\.|'
              'Bros\.|'
@@ -110,6 +110,7 @@ def full_tokenize(text):
              'Mrs\.|'
              'Ms\.|')
 
+    # Pattern that splits tokens.
     pattern = ('(' + abbre +
                '[A-Z](?=\.)|'  # Any capital letter followed by a period.
                '[\'](?=[^\w])|'  # ' followed by a non-word character.
@@ -119,13 +120,7 @@ def full_tokenize(text):
                '\s+'  # Any number of consecutive spaces.
                ')')
 
-    special_cases = (['a.m.', 'e.g.', 'i.e.'])
-
     tokens = [segment for segment in re.split(pattern, text) if segment]
-
-    for index, token in enumerate(tokens):
-        if token.lower() in special_cases:
-            tokens[index:index+1] = [token for token in re.split("([a-zA-Z]\.)", token) if token]
 
     line_indexes = [index for index in get_line_indexes(tokens)]
     sentence_indexes = [index for index in get_sentence_indexes(tokens)]
