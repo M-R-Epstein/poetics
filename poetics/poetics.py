@@ -11,27 +11,42 @@ def create_poem(filename, title=None, author=None, directory=config.poem_directo
         read_data = data.readlines()
 
     if not title:
-        title_search = re.search(".+(?=-)", filename)
-        if title_search:
-            title = title_search.group(0).split('/')[-1]
+        # If the file is in a directory name the poem the entire name of the text file (minus .txt).
+        if '/' in filename:
+            title = re.search("(?<=/)[^/]+(?=\.txt)", filename).group(0)
+            if not title:
+                title = "Unknown poem"
+                logging.warning("Title for \"%s\" set as \"Unknown poem\". Title detection failed.", filename)
+        # Otherwise, assume that the file is named <title>-<author>.txt.
         else:
-            title = "Unknown Poem"
-            logging.warning("Title for \"%s\" set as \"Unknown Poem\". Please format filenames as "
-                            "\"title-author.txt\" for title detection or provide a title.", filename)
+            title = re.search(".+(?=-)", filename).group(0)
+            if not title:
+                title = "Unknown poem"
+                logging.warning("Title for \"%s\" set as \"Unknown poem\". Please format filenames as "
+                                "\"title-author.txt\" for title detection for poems inside of the root poems directory,"
+                                " or provide a title as an argument to create_poem()." , filename)
 
     if not author:
-        author_search = re.search("(?<=-).+(?=\.)", filename)
-        if author_search:
-            author = author_search.group(0)
+        # If the file is in a directory, use the name of the highest level subdirectory of the poems directory as the
+        # author name.
+        if '/' in filename:
+            author = re.search("[^/]+", filename).group(0)
+            if not author:
+                author = "Unknown Poet"
+                logging.warning("Author for \"%s\" set as \"Unknown poet\". Author detection failed.", filename)
+        # Otherwise, assume that the file is named <title>-<author>.txt.
         else:
-            author = "Unknown Poet"
-            logging.warning("Author for \"%s\" set as \"Unknown Poet\". Please format filenames as "
-                            "\"title-author.txt\" for author name detection or provide the author's name.", filename)
+            author = re.search("(?<=-).+(?=\.txt)", filename).group(0)
+            if not author:
+                author = "Unknown Poet"
+                logging.warning("Author for \"%s\" set as \"Unknown poet\". Please format filenames as "
+                                "\"title-author.txt\" for author name detection for poems inside of the root poems "
+                                "directory, or provide the author's name. as an argument to create_poem().", filename)
 
     return Poem(read_data, title, author)
 
 
-def process_poems(directory=config.poem_directory, outputfile='output.csv'):
+def process_poems(directory=config.poem_directory, outputfile=config.output_file):
     # Does the provided directory exist?
     if not os.path.isdir(directory):
         logging.warning("\"%s\" is not a valid directory.", directory)
@@ -43,28 +58,36 @@ def process_poems(directory=config.poem_directory, outputfile='output.csv'):
 
     for dirpath, dirnames, filenames in os.walk(directory):
         for file in filenames:
-            # Get poem name from file name
-            name_search = re.search(".+(?=-)", file)
-            if name_search:
-                name = name_search.group(0)
+
+            # Extract the filename if the file is in a subdirectory of poem_directory.
+            if '/' in file:
+                title = re.search("(?<=/)[^/]+(?=\.txt)", file).group(0)
+            # Otherwise, assume that the file is named <title>-<author>.txt.
             else:
-                logging.warning("File \"%s\" skipped because its filename is invalid. Please format filenames as "
-                                "\"title-author.txt\".", file)
+                title = re.search(".+(?=-)", file).group(0)
+
+            if not title:
+                logging.warning("File \"%s\" skipped as no title was detected.", file)
                 continue
-            # Get author name from file name
-            author_search = re.search("(?<=-).+(?=\.)", file)
+
+            # Take the author name from the top level subdirectory of poem_directory.
+            author_search = re.search("[^/]+", file)
             if author_search:
                 author = author_search.group(0)
             else:
-                logging.warning("File \"%s\" skipped because its filename is invalid. Please format filenames as "
-                                "\"title-author.txt\".", file)
-                continue
+                author = "Unknown"
+
+                logging.warning("Author for \"%s\" set as \"Unknown\" as no name was found. Author names are inherited "
+                                "from the top-level subdirectory of the poem directory in which a poem file is stored "
+                                "by default. Poems directly inside of the poems directly are assumed to have their "
+                                "filenames formatted as \"title-author.txt\".", file)
+
             # Read in data
             with open(dirpath + "/" + file, encoding="utf-8") as data:
                 read_data = data.readlines()
 
             # Create poem, do stuff, record
-            poem = Poem(read_data, name, author)
+            poem = Poem(read_data, title, author)
             poem.get_rhymes()
             poem.get_sonic_features()
             poem.get_pos()
