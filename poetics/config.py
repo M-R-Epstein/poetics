@@ -10,31 +10,30 @@ directory = os.path.dirname(__file__)
 # Configuration Variables
 ########################################################################################################################
 # Poem directory.
-poem_directory = '/poems'
+poem_directory = os.path.split(directory)[0] + '/poems'
 # Default output file.
-output_file = 'output.csv'
+output_file = os.path.split(directory)[0] + 'output.csv'
 
-# Path of spacy model to use.
-spacy_model_dir = 'data/spacy/en_core_web_sm'
+# Path of the spacy model to use.
+spacy_model_dir = os.path.join(directory, 'data/spacy/en_core_web_sm')
 
 # Path of raw cmudict. From https://github.com/cmusphinx/cmudict.
-cmudict_raw_path = 'data/cmudict/cmudict.txt'
+cmudict_raw_path = os.path.join(directory, 'data/cmudict/cmudict.txt')
 # Path of json version of cmudict.
-cmudict_path = 'data/cmudict/cmudict.json'
+cmudict_path = os.path.join(directory, 'data/cmudict/cmudict.json')
 # Path of cmudict wordlist (used by pyEnchant).
-cmudict_wordlist_path = 'data/cmudict/wordlist.txt'
+cmudict_wordlist_path = os.path.join(directory, 'data/cmudict/wordlist.txt')
 # Path of phoneticized version of cmudict.
-cmudict_phonetic_path = 'data/cmudict/phoneticized.json'
+cmudict_phonetic_path = os.path.join(directory, 'data/cmudict/phoneticized.json')
 
 # Path of alternate spellings file.
-alt_spellings_path = 'data/alternate_spellings.json'
+alt_spellings_path = os.path.join(directory, 'data/alternate_spellings.json')
 # Path of poem forms file.
-poem_forms_path = 'data/poem_forms.json'
+poem_forms_path = os.path.join(directory, 'data/poem_forms.json')
 # Path of sonic features file.
-sonic_features_path = 'data/sonic_features.json'
+sonic_features_path = os.path.join(directory, 'data/sonic_features.json')
 # Path of stanza forms file.
-stanza_forms_path = 'data/stanza_forms.json'
-
+stanza_forms_path = os.path.join(directory, 'data/stanza_forms.json')
 
 
 ########################################################################################################################
@@ -47,6 +46,14 @@ short_pos_dict = {'NIL': '\"', 'AFX': 'AJ', 'JJ': 'AJ', 'JJR': 'AJ', 'JJS': 'AJ'
                   'RP': 'RT', 'TO': 'RT', 'PRP': 'PRP', 'NNP': 'PRN', 'NNPS': 'PRN', '_SP': 'SP', 'SP': 'SP', '#': 'SM',
                   'SYM': 'SM', 'MD': 'V', 'VB': 'V', 'VBD': 'V', 'VBG': 'V', 'VBN': 'V', 'VBP': 'V', 'VBZ': 'V',
                   'BES': 'V', 'HVS': 'V', 'FW': 'X', 'ADD': 'X', 'GW': 'X', 'XX': 'X', '.': '?'}
+# Pronunciation features to scheme names. Used for naming rhyme schemes generated from a pronunciation feature
+# (i.e., str_vowel, the pronunciation's stressed vowel sound, corresponds to assonance). The value for each entry
+# is the name of the scheme when line-final and then the name of the scheme when line-initial.
+rhyme_scheme_names = {'p_rhyme': ('Perfect Rhyme', 'Perfect Head Rhyme'), 'r_rhyme': ('Rich Rhyme', 'Rich Head Rhyme'),
+                      'str_vowel': ('Assonance', 'Head Assonance'), 'str_fin_con': ('Consonance', 'Head Consonance'),
+                      'str_bkt_cons': ('Bracket Consonance', 'Head Bracket Consonance'),
+                      'str_ini_con': ('Alliteration', 'Head Alliteration'),
+                      'word_ini_con': ('Word Initial Alliteration', 'Head Word Initial Alliteration')}
 # Classical meters
 classic_meters = {'1010011001100101': 'choriamb', '10100101010': 'hendecasyllabe', '10100101011': 'hendecasyllabe',
                   '11100101010': 'hendecasyllabe', '11100101011': 'hendecasyllabe', '01010101011': 'hendecasyllabe',
@@ -114,27 +121,26 @@ unstressed_words = ["a", "am", "an", "and", "are", "as", "but", "by", "can", "fo
 ########################################################################################################################
 # Loading
 ########################################################################################################################
-poem_directory = os.path.split(directory)[0] + poem_directory
 
-spacy_model = spacy.load(os.path.join(directory, spacy_model_dir))
+spacy_model = spacy.load(spacy_model_dir)
 
-enchant_dictionary = enchant.request_pwl_dict(os.path.join(directory, cmudict_wordlist_path))
+enchant_dictionary = enchant.request_pwl_dict(cmudict_wordlist_path)
 
 enchant_english_dictionary = enchant.Dict("en_US")
 
-with open(os.path.join(directory, cmudict_phonetic_path)) as file:
+with open(cmudict_phonetic_path) as file:
     phoneticized_dict = json.load(file)
 
-with open(os.path.join(directory, poem_forms_path)) as file:
+with open(poem_forms_path) as file:
     poem_forms_file = json.load(file)
 poem_forms = poem_forms_file["forms"]
 poem_forms_repeating = poem_forms_file["repeating_forms"]
 poem_forms_stanzaic = poem_forms_file["by_stanza"]
 
-with open(os.path.join(directory, stanza_forms_path)) as file:
+with open(stanza_forms_path) as file:
     stanza_forms = json.load(file)
 
-with open(os.path.join(directory, sonic_features_path)) as file:
+with open(sonic_features_path) as file:
     sonic_features_file = json.load(file)
 word_endings = sonic_features_file["endings"]
 onomatopoetic_words = sonic_features_file["onomatopoeia"]
