@@ -194,8 +194,7 @@ def check_meters(length, predicted, predicted_single):
 ########################################################################################################################
 # Rhyme
 ########################################################################################################################
-# Chooses between candidate rhymes based on how often they appeareared in resolved lines, and then in unresolved lines
-# if they never appeared in resolved lines.
+# Chooses between candidate rhymes based on maximizing rhyme.
 def resolve_rhyme(candidates, rhyme_counts, rhyme_counts_mult):
     appearance_count = []
     appearance_count_mult = []
@@ -209,25 +208,104 @@ def resolve_rhyme(candidates, rhyme_counts, rhyme_counts_mult):
     # If not, pick a rhyme based on how many unresolved lines it matches with (if any).
     elif max(appearance_count_mult) >= 1:
         return candidates[appearance_count_mult.index(max(appearance_count_mult))]
+    # If none, we have no basis for resolution.
     else:
         return None
 
 
-# Attempts to maximize matches across tokens for feature.
+# Attempts to maximize matches across tokens for their values for the feature.
 def maximize_token_matches(tokens, feature):
     # List of tokens that don't have that feature resolved.
     unresolved_tokens = [token for token in tokens if not getattr(token, 's_' + feature)]
+
+    # If all of the tokens already have the feature resolved (that is, if all pronunciations assigned to a token
+    # have the same value for the feature), then there's nothing to maximize.
     if not unresolved_tokens:
         return
-    # Counts occurances of the feature for tokens that only have one candidate.
+
+    # Counter for occurances of the feature for tokens that have the feature resolved.
     count = Counter([getattr(token.pronunciations[0], feature) for token in tokens if getattr(token, 's_' + feature)])
-    # Counter occurances of the feature for tokens that have multiple candidates.
+    # Counter for occurances of the feature for tokens that don't have the feature resolved.
     multi_count = Counter([getattr(pronunciation, feature) for token in unresolved_tokens
                            for pronunciation in token.pronunciations])
-    # Picks the most likely option for the given feature for unresolved tokens, then removes pronunciations from the
-    # token that do not share the selected option.
+
+    # Creates a list of tuples which store the token and the most likely value (for feature) for each unresolved token.
+    best_features = []
     for token in unresolved_tokens:
-        best_feature = resolve_rhyme([getattr(pronunciation, feature) for pronunciation in token.pronunciations],
-                                     count, multi_count)
-        if best_feature:
-            token.cull_pronunciations(feature, best_feature)
+        best_features.append((token, resolve_rhyme([getattr(pronunciation, feature) for pronunciation
+                                                    in token.pronunciations], count, multi_count)))
+
+    # Update our count of resolved token features to include the most likely values we've calculated.
+    count.update([value for token, value in best_features])
+
+    # Threshold for the number of unique values for the feature amongst tokens above which that feature is not
+    # maximized. This is set as half the number of tokens, rounded up. I.e., if we have 16 (or 15) tokens, then if there
+    # are more than 9 unique values then don't consider that feature patterened and don't maximize for it.
+    threshold = (len(tokens) // 2) + (len(tokens) % 2 > 0)
+
+    # If we have more unique values for feature than the threshold, then don't do any maximizing.
+    if len(count) > threshold:
+        return
+    # If some number of tokens had a value for the feature of None, then don't do any maximizing.
+    elif None in count:
+        return
+    # Otherwise, remove pronunciations from the unresolved tokens that don't have the selected value for feature.
+    else:
+        for token, value in best_features:
+            # It is possible for resolve_rhyme to return None, so make sure we have a value before we do anything.
+            if value:
+                token.cull_pronunciations(feature, value)
+
+
+########################################################################################################################
+# Sight
+########################################################################################################################
+
+def get_acrosstics(input_string):
+    def find_next_word(letters):
+        c = 1
+        words = []
+        # All single letters are in the dictionary, but they aren't words, so if the first letter isn't 'a' or 'i' then
+        # skip matching the first letter.
+        if not letters[0] == 'a' and not letters[0] == 'i':
+            if len(letters) > 1:
+                c += 1
+            # If we don't have a next letter to skip to, then stop.
+            else:
+                return words
+        # Loop through the input string in segments of increasing length checking if any are words. Add matched words to
+        # words, which is the output.
+        while c <= len(letters):
+            if config.enchant_english_dictionary.check(letters[:c]):
+                words.append(letters[:c])
+            c += 1
+        return words
+
+    final_readings = []
+    # Create a list of the words that could start an accrostic.
+    readings = [[word] for word in find_next_word(input_string)]
+    # Keep looping until we run out of readings.
+    while readings:
+        for index, reading in enumerate(readings):
+            # If the current reading is the length of the entire input string, then add it to output and remove it from
+            # readings.
+            if len(''.join(reading)) == len(input_string):
+                final_readings.append(reading)
+                del readings[index]
+                continue
+            # Get the set of next possible words for the string remaining when it has been trimmed to reflect the
+            # current words in reading.
+            next_words = find_next_word(input_string[len(''.join(reading)):])
+            # If we got no words, then delete the current reading as it cannot be completed.
+            if len(next_words) == 0:
+                del readings[index]
+            # If we got a single word, then add it to the end of the current reading.
+            elif len(next_words) == 1:
+                readings[index].append(next_words[0])
+            # If we got multiple words, split the reading off into multiple readings that continue from each.
+            elif len(next_words) >= 1:
+                current = reading[:]
+                readings[index].append(next_words[0])
+                for word in next_words[1:]:
+                    readings.append(current + [word])
+    return final_readings

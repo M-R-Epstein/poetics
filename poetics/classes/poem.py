@@ -12,7 +12,7 @@ from poetics.conversions import tokenize, full_tokenize, feats_to_scheme, title_
 from poetics.logging import tags_with_text, convert_scansion, header1, header1d, header2, join_list_proper
 from poetics.lookups import name_meter, name_poem
 from poetics.patterning import check_meters, predict_scan, pattern_match_ratio, check_for_words, \
-    maximize_token_matches
+    maximize_token_matches, get_acrosstics
 
 
 class Poem:
@@ -27,6 +27,7 @@ class Poem:
 
         self.tokens = []
         self.word_tokens = []
+        self.num_lines = 0
         self.lines = []
         self.avg_words_per_line = None
         self.sentences = []
@@ -36,23 +37,11 @@ class Poem:
         self.scans = {}
         self.meters = {}
 
-        # Final rhyme types.
-        self.scm_p_rhymes = None
-        self.scm_r_rhymes = None
-        self.scm_asso = None
-        self.scm_cons = None
-        self.scm_bkt_cons = None
-        self.scm_str_allit = None
-        self.scm_ini_allit = None
-        # Init rhyme types.
-        self.scm_i_p_rhymes = None
-        self.scm_i_r_rhymes = None
-        self.scm_i_asso = None
-        self.scm_i_cons = None
-        self.scm_i_bkt_cons = None
-        self.scm_i_str_allit = None
-        self.scm_i_ini_allit = None
+        # Lists of line-final and line-initial rhyme schemes.
+        self.f_rhyme_schemes = {}
+        self.i_rhyme_schemes = {}
 
+        # Booleans tracking whether or not rhyme, pos, scansion, etc have already been calculated.
         self.got_rhyme = False
         self.got_pos = False
         self.got_scansion = False
@@ -71,6 +60,10 @@ class Poem:
             if found_pronunciations:
                 text[index] = re.sub("{[A-Z0-9\s-]+}", "", text[index])
 
+            # Get rid of smart quotes, while we're at it.
+            text[index] = re.sub('[‘’]', "'", text[index])
+            text[index] = re.sub('[“”]', '"', text[index])
+
         # Gets word tokens.
         dict_tokens = [token for token in set(tokenize(''.join(text)))]
         # Creates a dictionary of words for which the value corresponding to each word string (key) is the object
@@ -84,12 +77,14 @@ class Poem:
         # Break the text into tokens (including spaces and punctuation), and get token indexes for lines, sentences
         # and stanzas.
         tokens, line_indexes, sentence_indexes, stanza_indexes = full_tokenize(''.join(text))
-        # Create a Token object for each token, Line object for each line, Sentence object for each sentence, and
-        # Stanza object for each stanza.
-        line_num = 1
+
+        # Create a Token object for each token and add the tokens that are words to self.word_tokens.
         for index, token in enumerate(tokens):
             self.tokens.append(Token(token, index, self))
             self.word_tokens = [token for token in self.tokens if not token.is_punct and not token.is_wspace]
+
+        # Create a Line object for each line.
+        line_num = 1
         for start, stop in line_indexes:
             # Deals with numbering lines.
             if check_for_words(self.tokens[start:stop]):
@@ -97,8 +92,14 @@ class Poem:
                 line_num += 1
             else:
                 self.lines.append(Line(self.tokens[start:stop], None, self))
+        # Set num_lines to the number of non-blank lines.
+        self.num_lines = line_num
+
+        # Create a Sentence object for each sentence.
         for start, stop in sentence_indexes:
             self.sentences.append(Sentence(self.tokens[start:stop + 1], self))
+
+        # Create a Stanza object for each stanza.
         for start, stop in stanza_indexes:
             # Assigns the correct lines to the correct stanzas.
             lines = [index for index, (start2, stop2) in enumerate(line_indexes) if start2 >= start and stop2 <= stop]
@@ -120,133 +121,55 @@ class Poem:
             logging.error("Unrecognized words: %s", ", ".join(self.unrecognized_words))
 
     def get_rhymes(self):
-        # If we don't have a rhyming scheme, figure one out
-        if not self.scm_p_rhymes:
-            # Have final/initial words in each line cull pronunciations based on maximizing rhyme/assonance/etc.
-            final_words = [line.final_word for line in self.lines if not line.is_blank]
-            init_words = [line.initial_word for line in self.lines if not line.is_blank]
-            maximize_features = ['p_rhyme', 'r_rhyme', 'str_vowel', 'str_fin_con', 'str_ini_con', 'word_ini_con',
-                                 'str_bkt_cons']
-            for feature in maximize_features:
-                maximize_token_matches(final_words, feature)
-                maximize_token_matches(init_words, feature)
-            # Have stanzas get rhyme schemes.
-            for stanza in self.stanzas:
-                stanza.get_rhymes()
-            # Uses half the number of lines +1 to set the max number of unique features for a feature to count as
-            # having some kind of pattern. So, for example, a 16 or 15 line poem would need no more than 8 rhymes.
-            max_sets = ((len([line for line in self.lines if not line.is_blank]) // 2) + 1)
-            # Gets rhyming schemes.
-            self.scm_p_rhymes = feats_to_scheme([' ' if line.is_blank else line.final_word.pronunciations[0].p_rhyme
-                                                 for line in self.lines], False, True, max_sets)
-            self.scm_r_rhymes = feats_to_scheme([' ' if line.is_blank else line.final_word.pronunciations[0].r_rhyme
-                                                 for line in self.lines], False, True, max_sets)
-            self.scm_asso = feats_to_scheme([' ' if line.is_blank else line.final_word.pronunciations[0].str_vowel
-                                             for line in self.lines], False, True, max_sets)
-            self.scm_cons = feats_to_scheme([' ' if line.is_blank else line.final_word.pronunciations[0].str_fin_con
-                                             for line in self.lines], False, False, max_sets)
-            self.scm_bkt_cons = feats_to_scheme([' ' if line.is_blank
-                                                 else line.final_word.pronunciations[0].str_bkt_cons
-                                                 for line in self.lines], False, False, max_sets)
-            self.scm_str_allit = feats_to_scheme([' ' if line.is_blank
-                                                  else line.final_word.pronunciations[0].str_ini_con
-                                                  for line in self.lines], False, False, max_sets)
-            self.scm_ini_allit = feats_to_scheme([' ' if line.is_blank else
-                                                  line.final_word.pronunciations[0].word_ini_con
-                                                  for line in self.lines], False, False, max_sets)
-            self.scm_i_p_rhymes = feats_to_scheme([' ' if line.is_blank else line.initial_word.pronunciations[0].p_rhyme
-                                                   for line in self.lines], False, True, max_sets)
-            self.scm_i_r_rhymes = feats_to_scheme([' ' if line.is_blank else line.initial_word.pronunciations[0].r_rhyme
-                                                   for line in self.lines], False, True, max_sets)
-            self.scm_i_asso = feats_to_scheme([' ' if line.is_blank else line.initial_word.pronunciations[0].str_vowel
-                                               for line in self.lines], False, True, max_sets)
-            self.scm_i_cons = feats_to_scheme([' ' if line.is_blank else line.initial_word.pronunciations[0].str_fin_con
-                                               for line in self.lines], False, False, max_sets)
-            self.scm_i_bkt_cons = feats_to_scheme([' ' if line.is_blank
-                                                   else line.initial_word.pronunciations[0].str_bkt_cons
-                                                   for line in self.lines], False, False, max_sets)
-            self.scm_i_str_allit = feats_to_scheme([' ' if line.is_blank
-                                                    else line.initial_word.pronunciations[0].str_ini_con
-                                                    for line in self.lines], False, False, max_sets)
-            self.scm_i_ini_allit = feats_to_scheme([' ' if line.is_blank
-                                                    else line.initial_word.pronunciations[0].word_ini_con
-                                                    for line in self.lines], False, False, max_sets)
+        # List of features that correspond to rhyme types.
+        features = ['p_rhyme', 'r_rhyme', 'str_vowel', 'str_fin_con', 'str_bkt_cons', 'str_ini_con', 'word_ini_con']
+        # Have final/initial words in each line cull pronunciations based on maximizing rhyme/assonance/etc.
+        final_words = [line.final_word for line in self.lines if not line.is_blank]
+        init_words = [line.initial_word for line in self.lines if not line.is_blank]
+        for feature in features:
+            maximize_token_matches(final_words, feature)
+            maximize_token_matches(init_words, feature)
+        # Have stanzas get rhyme schemes.
+        for stanza in self.stanzas:
+            stanza.get_rhymes()
 
-        # Log the highest priority scheme (rich rhyme, perfect rhyme, assonance, bracket consonance, consonance,
-        # alliteration, word-initial alliteration).
-        header2("Rhyme")
-        if self.scm_r_rhymes:
-            logging.info("Rich Rhyming Scheme: %s", self.scm_r_rhymes)
-            stanza_scheme = [stanza.scm_r_rhymes for stanza in self.stanzas if stanza.scm_r_rhymes]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Rich Rhyming Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_p_rhymes:
-            logging.info("Perfect Rhyming Scheme: %s", self.scm_p_rhymes)
-            stanza_scheme = [stanza.scm_p_rhymes for stanza in self.stanzas if stanza.scm_p_rhymes]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Perfect Rhyming Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_asso:
-            logging.info("Assonance Scheme: %s", self.scm_asso)
-            stanza_scheme = [stanza.scm_asso for stanza in self.stanzas if stanza.scm_asso]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Assonance Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_bkt_cons:
-            logging.info("Bracket Consonance Scheme: %s", self.scm_bkt_cons)
-            stanza_scheme = [stanza.scm_bkt_cons for stanza in self.stanzas if stanza.scm_bkt_cons]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Bracket Consonance Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_cons:
-            logging.info("Consonance Scheme: %s", self.scm_cons)
-            stanza_scheme = [stanza.scm_cons for stanza in self.stanzas if stanza.scm_cons]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Consonance Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_str_allit:
-            logging.info("Alliteration Scheme: %s", self.scm_str_allit)
-            stanza_scheme = [stanza.scm_str_allit for stanza in self.stanzas if stanza.scm_str_allit]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Alliteration Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_ini_allit:
-            logging.info("Word Initial Alliteration Scheme: %s", self.scm_ini_allit)
-            stanza_scheme = [stanza.scm_ini_allit for stanza in self.stanzas if stanza.scm_ini_allit]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Word Initial Alliteration Schemes: %s", ', '.join(stanza_scheme))
+        # Creates a threshold that is used to determine if a given rhyme type should have a scheme generated. If the
+        # number of unique entries (letters) in the given scheme would be higher than the threshold, then no scheme
+        # is generated. The threshold is set as half the number of lines rounded up. I.e., if a poem with 15 or 16
+        # non-blank lines would result in a rhyme scheme that used 9 or more unique letters, no scheme would be
+        # generated.
+        threshold = (self.num_lines // 2) + (self.num_lines % 2 > 0)
 
-        # Does the same for head-rhyme.
-        if self.scm_i_r_rhymes:
-            logging.info("Rich Head Rhyming Scheme: %s", self.scm_i_r_rhymes)
-            stanza_scheme = [stanza.scm_i_r_rhymes for stanza in self.stanzas if stanza.scm_i_r_rhymes]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Rich Head Rhyming Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_i_p_rhymes:
-            logging.info("Perfect Head Rhyming Scheme: %s", self.scm_i_p_rhymes)
-            stanza_scheme = [stanza.scm_i_p_rhymes for stanza in self.stanzas if stanza.scm_i_p_rhymes]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Perfect Head Rhyming Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_i_asso:
-            logging.info("Head Assonance Scheme: %s", self.scm_i_asso)
-            stanza_scheme = [stanza.scm_i_asso for stanza in self.stanzas if stanza.scm_i_asso]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Head Assonance Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_i_bkt_cons:
-            logging.info("Head Bracket Consonance Scheme: %s", self.scm_i_bkt_cons)
-            stanza_scheme = [stanza.scm_i_bkt_cons for stanza in self.stanzas if stanza.scm_i_bkt_cons]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Head Bracket Consonance Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_i_cons:
-            logging.info("Head Consonance Scheme: %s", self.scm_i_cons)
-            stanza_scheme = [stanza.scm_i_cons for stanza in self.stanzas if stanza.scm_i_cons]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Head Consonance Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_i_str_allit:
-            logging.info("Head Alliteration Scheme: %s", self.scm_i_str_allit)
-            stanza_scheme = [stanza.scm_i_str_allit for stanza in self.stanzas if stanza.scm_i_str_allit]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Head Alliteration Schemes: %s", ', '.join(stanza_scheme))
-        elif self.scm_i_ini_allit:
-            logging.info("Head Word Initial Alliteration Scheme: %s", self.scm_i_ini_allit)
-            stanza_scheme = [stanza.scm_i_ini_allit for stanza in self.stanzas if stanza.scm_i_ini_allit]
-            if len(stanza_scheme) > 1:
-                logging.info("Stanza Head Word Initial Alliteration Schemes: %s", ', '.join(stanza_scheme))
+        # Generate schemes for each feature.
+        for feature in features:
+            f_scheme = feats_to_scheme([' ' if line.is_blank else getattr(line.final_word.pronunciations[0], feature)
+                                        for line in self.lines], False, False, threshold)
+            i_scheme = feats_to_scheme([' ' if line.is_blank else getattr(line.initial_word.pronunciations[0], feature)
+                                        for line in self.lines], False, False, threshold)
+            # If a scheme was returned (feats_to_scheme will return None if the number of unique entries exceeded
+            # threshold), then add it to the poem's list of line-final (f_) or line-initial (i_) schemes.
+            if f_scheme:
+                self.f_rhyme_schemes[feature] = f_scheme
+            if i_scheme:
+                self.i_rhyme_schemes[feature] = i_scheme
+
+        # Logs the generated line-final schemes.
+        header1("Rhyme")
+        for feature, scheme in self.f_rhyme_schemes.items():
+            logging.info('%s Scheme: %s', config.rhyme_scheme_names[feature][0], scheme)
+            stanza_schemes = [stanza.f_rhyme_schemes[feature] for stanza in self.stanzas
+                              if stanza.f_rhyme_schemes[feature]]
+            if len(stanza_schemes) > 1:
+                logging.info("Stanza %s Schemes: %s", config.rhyme_scheme_names[feature][0], ', '.join(stanza_schemes))
+
+        # Logs the generated line-initial schemes.
+        for feature, scheme in self.i_rhyme_schemes.items():
+            logging.info('%s Scheme: %s', config.rhyme_scheme_names[feature][1], scheme)
+            stanza_schemes = [stanza.i_rhyme_schemes[feature] for stanza in self.stanzas
+                              if stanza.i_rhyme_schemes[feature]]
+            if len(stanza_schemes) > 1:
+                logging.info("Stanza %s Schemes: %s", config.rhyme_scheme_names[feature][1], ', '.join(stanza_schemes))
+
         # Set a boolean for rhyme having been calculated.
         self.got_rhyme = True
 
@@ -259,6 +182,21 @@ class Poem:
         for index, stanza in enumerate(self.stanzas):
             header2('Stanza %s (%s...)' % (index + 1, ' '.join([token.token for token in stanza.word_tokens[0:4]])))
             stanza.print_sonic_features()
+
+    def get_sight_features(self):
+        i_chars = ''.join([line.initial_word.token[0] for line in self.lines if not line.is_blank]).lower()
+        f_chars = ''.join([line.final_word.token[-1] for line in self.lines if not line.is_blank]).lower()
+        i_across = get_acrosstics(i_chars)
+        f_across = get_acrosstics(f_chars)
+        header1("Sight Features")
+        if i_across:
+            header2("Initial Acrosstics")
+            for reading in i_across:
+                logging.info(' '.join(reading))
+        if f_across:
+            header2("Final Acrosstics")
+            for reading in f_across:
+                logging.info(' '.join(reading))
 
     # Gets parts of speech for sentences/lines/words
     def get_pos(self):
@@ -491,7 +429,7 @@ class Poem:
                     poem_forms_out.append("Unrecognized form")
         else:
             # Get possible names
-            poem_forms_out.extend(name_poem(self.scm_p_rhymes,
+            poem_forms_out.extend(name_poem(self.f_rhyme_schemes.get('p_rhyme'),
                                             [length for stanza in self.stanzas for length in stanza.line_lengths],
                                             sum([len(stanza.lines) for stanza in self.stanzas])))
             # If all of the stanzas have the same form(s), but we have multiples, return the appropriate second entries.
@@ -545,7 +483,7 @@ class Poem:
             output.append(self.author)  # Author
             output.append(len(self.lines))  # Line count
             output.append(len(self.word_tokens))  # Word count
-            output.append(self.scm_p_rhymes)
+            output.append(self.f_rhyme_schemes.get('p_rhyme'))
 
             with open(outputfile, 'a', newline='\n', encoding="utf-8") as file:
                 writer = csv.writer(file)
