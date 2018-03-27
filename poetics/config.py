@@ -40,12 +40,70 @@ stanza_forms_path = os.path.join(directory, 'data/stanza_forms.json')
 # Dictionaries
 ########################################################################################################################
 # Used to reformat specific part of speech tags as shorter, less specific (more readable) tags.
-short_pos_dict = {'NIL': '\"', 'AFX': 'AJ', 'JJ': 'AJ', 'JJR': 'AJ', 'JJS': 'AJ', 'PDT': 'AJ', 'PRP$': 'AJ',
-                  'WDT': 'AJ', 'WP$': 'AJ', 'IN': 'ADP', 'EX': 'AV', 'RB': 'AV', 'RBR': 'AV', 'RBS': 'AV', 'WRB': 'AV',
-                  'CC': 'CC', 'DT': 'DT', 'UH': 'UH', 'NN': 'N', 'NNS': 'N', 'WP': 'N', 'CD': '#', 'POS': 'RT',
-                  'RP': 'RT', 'TO': 'RT', 'PRP': 'PRP', 'NNP': 'PRN', 'NNPS': 'PRN', '_SP': 'SP', 'SP': 'SP', '#': 'SM',
-                  'SYM': 'SM', 'MD': 'V', 'VB': 'V', 'VBD': 'V', 'VBG': 'V', 'VBN': 'V', 'VBP': 'V', 'VBZ': 'V',
-                  'BES': 'V', 'HVS': 'V', 'FW': 'X', 'ADD': 'X', 'GW': 'X', 'XX': 'X', '.': '?'}
+short_pos_dict = {
+    'VB': 'V',  # base form verb
+    'VBD': 'V', # past tense verb
+    'VBG': 'V',  # gerund or present participle verb
+    'VBN': 'V',  # past participle verb
+    'VBZ': 'V',  # 3rd person singular present verb
+    'VBP': 'V',  # non-3rd person singular present verb
+    'MD': 'V',  # modal auxiliary verb
+    'BES': 'V',  # auxiliary be
+    'HVS': 'V',  # have
+    'NN': 'N',  # singular or mass noun
+    'NN$': 'N$',  # posessive singular or mass noun
+    'NNS': 'N',  # plural noun
+    'NNS$': 'N$',  # posessive plural noun
+    'NNP': 'N',  # singular proper noun
+    'NNP$': 'N$',  # posessive singular proper noun
+    'NNPS': 'N',  # plural proper noun
+    'NNPS$': 'N$',  # posessive plural proper noun
+    'PRP': 'PN',  # personal pronoun
+    'WP': 'PN',  # personal wh-pronoun
+    'PRP$': 'PN$',  # posessive pronoun
+    'WP$': 'PN$',  # posessive wh-pronoun
+    'RB': 'AV',  # adverb
+    'RBR': 'AV',  # comparative adverb
+    'RBS': 'AV',  # superlative adverb
+    'WRB': 'AV',  # wh-adverb
+    'JJ': 'AJ',  # adjective
+    'JJR': 'AJ',  # comparitive adjective
+    'JJS': 'AJ',  # superlative adjective
+    'AFX': 'AJ',  # affix
+    'PDT': 'PDT',  # predeterminer
+    'DT': 'DT',  # determiner
+    'WDT': 'DT',  # wh-determiner
+    'CC': 'CC',  # coordinating conjunction
+    'IN': 'IN',  # subordinating conjunction or preposition
+    'EX': 'EX',  # existential there
+    'TO': 'TO',  # infinitival to
+    'RP': 'RP',  # particle
+    'POS': '$',  # posessive ending
+    'GW': '?',  # word from multi-word expression
+    'UH': 'UH',  # interjection
+    'FW': 'FW',  # foreign word
+    'CD': '#',  # cardinal number
+    '$': 'SYM',  # currency
+    '#': 'SYM',  # pound sign
+    'SYM': 'SYM',  # symbol
+    'ADD': 'MAIL',  # email address
+    '.': '.',  # sentence terminator
+    ',': '.',  # comma
+    '-LRB-': '.',  # left round bracket
+    '-RRB-': '.',  # right round bracket
+    '``': '.',  # opening quotation mark
+    '""': '.',  # closing quotation mark
+    "''": '.',  # closing quotation mark
+    ':': '.',  # colon or ellipsis
+    'HYPH': '.',  # hyphen
+    'LS': '.',  # list marker
+    'NFP': '.',  # superfluous punctuation
+    'SP': 'SP',  # whitespace
+    '_SP': 'SP',  # whitespace
+    'XX': '?',  # unknown
+    'NIL': ''  # untagged
+    }
+
 # Pronunciation features to scheme names. Used for naming rhyme schemes generated from a pronunciation feature
 # (i.e., str_vowel, the pronunciation's stressed vowel sound, corresponds to assonance). The value for each entry
 # is the name of the scheme when line-final and then the name of the scheme when line-initial.
@@ -54,6 +112,7 @@ rhyme_scheme_names = {'p_rhyme': ('Perfect Rhyme', 'Perfect Head Rhyme'), 'r_rhy
                       'str_bkt_cons': ('Bracket Consonance', 'Head Bracket Consonance'),
                       'str_ini_con': ('Alliteration', 'Head Alliteration'),
                       'word_ini_con': ('Word Initial Alliteration', 'Head Word Initial Alliteration')}
+
 # Classical meters
 classic_meters = {'1010011001100101': 'choriamb', '10100101010': 'hendecasyllabe', '10100101011': 'hendecasyllabe',
                   '11100101010': 'hendecasyllabe', '11100101011': 'hendecasyllabe', '01010101011': 'hendecasyllabe',
@@ -83,6 +142,7 @@ metrical_foot_adj = {'pyrrhic': 'pyrrhic', 'iamb': 'iambic', 'trochee': 'trochai
                      'choriamb': 'choriambic', 'antispast': 'antispastic', 'first epitrite': 'first epitritic',
                      'second epitrite': 'second epitritic', 'third epitrite': 'third epitritic',
                      'fourth epitrite': 'fourth epitritic', 'dispondee': 'dispondaic'}
+
 # Meter names in order of foot count.
 meter_names = ['monometer', 'dimeter', 'trimeter', 'tetrameter', 'pentameter', 'hexameter', 'heptameter',
                'octameter', 'nonameter', 'decameter', 'undecameter', 'dodecameter', 'tridecameter', 'tetradecameter',
@@ -105,11 +165,12 @@ stanza_length_names = ['single', 'couplet', 'tercet', 'quatrain', 'quintet', 'se
                        'eighty-four', 'eighty-five', 'eighty-six', 'eighty-seven', 'eighty-eight', 'eighty-nine',
                        'ninety', 'ninety-one', 'ninety-two', 'ninety-three', 'ninety-four', 'ninety-five', 'ninety-six',
                        'ninety-seven', 'ninety-eight', 'ninety-nine', 'one hundred']
+
 # Lists for determining stress estimation of single syllable words based on part of speech tag.
 # Stress tendency parts of speech tags. Verbs and nouns.
-stress_pos = ['BES', 'MD', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ']
-# Weak stress tendency parts of speech tags. Adjective and adverbs.
-weak_stress_pos = ['AFX', 'EX', 'HVS', 'JJ', 'JJR', 'JJS', 'PDT', 'RB', 'RBR', 'RBS', 'WRB']
+stress_pos = ['VB', 'VBD', 'VBG', 'VBN', 'VBZ', 'VBP', 'MD', 'BES', 'HVS', 'NN', 'NNS', 'NNP', 'NNPS']
+# Weak stress tendency parts of speech tags. Adverbs and adjectives.
+weak_stress_pos = ['RB', 'RBR', 'RBS', 'WRB', 'JJ', 'JJR', 'JJS', 'AFX']
 # Neutral stress tendency parts of speech tags. Pronouns.
 neutral_stress_pos = ['PRP', 'PRP$', 'WP', 'WP$']
 # All other parts of speech are treated as having an unstressed tendency.
@@ -118,10 +179,18 @@ unstressed_words = ["a", "am", "an", "and", "are", "as", "but", "by", "can", "fo
                     "may", "nor", "of", "or", "so", "such", "than", "the", "them", "there", "this", "those", "though",
                     "to", "was", "were", "will", "with"]
 
+# Word segments that can form the head of a conjunction.
+conj_heads = ["i", "you", "he", "she", "it", "we", "they", "who", "what", "when", "where", "why", "how", "there",
+              "that", "ca", "could", "do", "does", "did", "had", "may", "might", "must", "need", "ought", "sha",
+              "should", "wo", "would", "ai", "are", "is", "was", "were", "have", "has", "dare", "y'", "y", "not",
+              "can", "gon", "got", "let"]
+# Word segments that can form the tail of a conjunction or the middle segment of a double-conjunction.
+conj_tails = ["all", "d", "ll", "na", "not", "nt", "n't", "re", "s", "ta", "ve"]
+
+
 ########################################################################################################################
 # Loading
 ########################################################################################################################
-
 spacy_model = spacy.load(spacy_model_dir)
 
 enchant_dictionary = enchant.request_pwl_dict(cmudict_wordlist_path)
