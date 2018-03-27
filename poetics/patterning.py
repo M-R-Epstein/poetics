@@ -261,7 +261,7 @@ def maximize_token_matches(tokens, feature):
 # Sight
 ########################################################################################################################
 
-def get_acrosstics(input_string):
+def get_acrostics(input_string):
     def find_next_word(letters):
         c = 1
         words = []
