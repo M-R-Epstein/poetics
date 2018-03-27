@@ -18,6 +18,29 @@ def phonetic_dict(word):
         return None
 
 
+# Returns a list of possible word endings using list from sonic_features.json.
+def get_word_endings(pronunciation):
+    out_list = []
+    # The maximum length of a word ending pronunciation in the file is 15, so our loop is constrained to the smallest of
+    # 15 or the length of the pronunciation. We start at 1 because we don't want to count words that are one of the
+    # endings in the file in their entirety.
+    for i in range(1, min(len(pronunciation), 15)):
+        segment = pronunciation[i:]
+        if segment in config.word_endings:
+            # We record the index instead of the actual pronunciation because the same segment will always have the same
+            # index (the list is from a file rather than dynamic) and the indexes are more performant for comparisons.
+            out_list.append(config.word_endings[segment])
+    return out_list
+
+
+# Checks if a word is in the list of onomatopoetic words.
+def check_onomatopoetic(word):
+    if word.lower() in config.onomatopoetic_words:
+        return True
+    else:
+        return False
+
+
 # Gets a word's pronunciations from phoneticized cmudict.
 # Future: currently reads "o'er" as "over" which is correct but messes with scansion. Some kind of elision check?
 def get_pronunciations(token):
@@ -155,14 +178,6 @@ def build_elided(word):
 ########################################################################################################################
 # Form identification
 ########################################################################################################################
-# Tries to return the name of a rhyme pattern.
-def name_rhyme(rhyme):
-    if rhyme in config.rhyme_patterns:
-        return config.rhyme_patterns[rhyme]
-    else:
-        return ''
-
-
 # Tries to name a meter based on metrical pattern.
 def name_meter(pattern):
     classical_name = None
