@@ -10,10 +10,16 @@ class Token:
         self.token = token
         self.is_punct = False
         self.is_wspace = False  # Whitespace boolean.
+
+        self.stem = None
         self.pronunciations = None
+        self.lemma = None
 
         self.pos = None
+        self.pos_secondary = []
         self.simple_pos = None
+        self.dependency = None
+
         self.stress_tendency = None
         self.stress_override = None
 
@@ -28,15 +34,16 @@ class Token:
         self.s_p_rhyme = None  # Perfect rhyme.
         self.s_r_rhyme = None  # Rich rhyme.
 
-        match = re.match("\s+", token)
-        match2 = re.match("\W", token)
-        if match:
+        spaces = re.match("\s+", token)
+        non_word = re.match("\W", token)
+        if spaces:
             self.is_wspace = True
-        elif match2:
+        elif non_word:
             self.is_punct = True
         # Get pronunciations from the matching word dict entry.
         if not self.is_punct and not self.is_wspace:
             self.pronunciations = list(parent.words[self.token.lower()].pronunciations[:])
+            self.stem = parent.words[self.token.lower()].stem
             if len(self.pronunciations) == 1:
                 self.s_stress = self.s_syllables = self.s_str_vowel = self.s_str_ini_con = self.s_str_fin_con = \
                     self.s_str_bkt_cons = self.s_word_ini_con = self.s_p_rhyme = self.s_r_rhyme = True
@@ -72,6 +79,7 @@ class Token:
     # Culls pronunciations where feature is not equal to pattern.
     def cull_pronunciations(self, feature, pattern):
         remove = []
+        # Special case for syllables as syllables specifies the number of syllables rather than a form they must match.
         if feature == 'syllables':
             for pronunciation in self.pronunciations:
                 if not len(pronunciation.syllables) == pattern:
@@ -109,3 +117,21 @@ class Token:
             return None
         else:
             return self.stress_override or self.pronunciations[0].stress
+
+    # Sets the token's PoS tags.
+    def set_pos(self, tags):
+        if len(tags) > 1:
+            self.pos = tags[0]
+            self.pos_secondary = tags[1:]
+            self.simple_pos = config.short_pos_dict[tags[0]]
+        else:
+            self.pos = tags[0]
+            self.simple_pos = config.short_pos_dict[tags[0]]
+
+    # Sets the token's syntactic dependencies.
+    def set_dependency(self, deps):
+        self.dependency = deps
+
+    # Sets the token's lemma.
+    def set_lemma(self, lemmas):
+        self.lemma = lemmas

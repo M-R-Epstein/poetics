@@ -1,15 +1,17 @@
 import logging
 
-from poetics.lookups import get_pronunciations
+from poetics.lookups import get_pronunciations, check_onomatopoetic
 from poetics.classes.pronunciation import Pronunciation
+from poetics.stemmer import stem
 
 
 class Word:
     def __init__(self, word, user_pronunciation=None, parent=None):
         self.parent = parent
         self.token = word
-
+        self.stem = stem(word)
         self.pronunciations = None
+        self.onomatopoetic = check_onomatopoetic(word)
 
         # Deal with user provided pronunciations.
         if user_pronunciation:
@@ -48,6 +50,7 @@ class Word:
                 out_pronunciation.append(syllable_out)
                 f_pronunciations.append(Pronunciation(out_pronunciation, self))
                 self.pronunciations = tuple(f_pronunciations)
+        # If there isn't a user provided pronunciation, get a pronunciation.
         else:
             f_pronunciations = []
             pronunciations = get_pronunciations(word)
