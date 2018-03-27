@@ -12,7 +12,7 @@ from poetics.conversions import tokenize, full_tokenize, feats_to_scheme, title_
 from poetics.logging import tags_with_text, convert_scansion, header1, header1d, header2, join_list_proper
 from poetics.lookups import name_meter, name_poem
 from poetics.patterning import check_meters, predict_scan, pattern_match_ratio, check_for_words, \
-    maximize_token_matches, get_acrosstics
+    maximize_token_matches, get_acrostics
 
 
 class Poem:
@@ -123,12 +123,14 @@ class Poem:
     def get_rhymes(self):
         # List of features that correspond to rhyme types.
         features = ['p_rhyme', 'r_rhyme', 'str_vowel', 'str_fin_con', 'str_bkt_cons', 'str_ini_con', 'word_ini_con']
+
         # Have final/initial words in each line cull pronunciations based on maximizing rhyme/assonance/etc.
         final_words = [line.final_word for line in self.lines if not line.is_blank]
         init_words = [line.initial_word for line in self.lines if not line.is_blank]
         for feature in features:
             maximize_token_matches(final_words, feature)
             maximize_token_matches(init_words, feature)
+
         # Have stanzas get rhyme schemes.
         for stanza in self.stanzas:
             stanza.get_rhymes()
@@ -183,22 +185,26 @@ class Poem:
             header2('Stanza %s (%s...)' % (index + 1, ' '.join([token.token for token in stanza.word_tokens[0:4]])))
             stanza.print_sonic_features()
 
+    def get_rhetorical_features(self):
+        return
+
+    # Gets sight features of the poem.
     def get_sight_features(self):
         i_chars = ''.join([line.initial_word.token[0] for line in self.lines if not line.is_blank]).lower()
         f_chars = ''.join([line.final_word.token[-1] for line in self.lines if not line.is_blank]).lower()
-        i_across = get_acrosstics(i_chars)
-        f_across = get_acrosstics(f_chars)
+        i_acros = get_acrostics(i_chars)
+        f_acros = get_acrostics(f_chars)
         header1("Sight Features")
-        if i_across:
-            header2("Initial Acrosstics")
-            for reading in i_across:
+        if i_acros:
+            header2("Initial Acrostics")
+            for reading in i_acros:
                 logging.info(' '.join(reading))
-        if f_across:
+        if f_acros:
             header2("Final Acrosstics")
-            for reading in f_across:
+            for reading in f_acros:
                 logging.info(' '.join(reading))
 
-    # Gets parts of speech for sentences/lines/words
+    # Gets parts of speech for word tokens.
     def get_pos(self):
         # Have each sentence get parts of speech
         for sentence in self.sentences:
