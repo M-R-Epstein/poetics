@@ -86,6 +86,8 @@ def get_stanza_indexes(token_list):
 
 # Tokenizes text and gets indexes of tokens belonging to lines, sentences, and stanzas.
 def full_tokenize(text):
+    # TODO: add exceptions for 'cause, 'em,, 'll, 'nuff, doin', goin', nothin', nothin', ol', somethin'
+
     # List of abbreviations that should be considered a single token.
     abbre = ('a\.m\.|p\.m\.|'
              '[vV][sS]\.|'
