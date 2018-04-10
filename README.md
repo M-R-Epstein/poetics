@@ -5,6 +5,7 @@
   - [Requirements](#requirements)
   - [Usage](#usage)
     - [create_poem()](#create_poem)
+    - [Providing Pronunciations](#providing_pronunciations)
     - [Poem methods](#poem-methods)
       - [get_rhymes()](#get_rhymes)
       - [get_sonic_features()](#get_sonic_features)
@@ -60,7 +61,15 @@ that the file is in (defaults to `poem_directory` set in [config.py](/poetics/co
 `create_poem` will automatically assign a title and author to the poem if the name of the text file provided is formatted as `<poem name>-<author name>.txt` (e.g. `song on may morning-john milton.txt`).
 `title` and `author` can optionally be entered manually to provide a title for the poem and a name for the poem's author.
 
-
+### Providing pronunciations
+Words for which a pronunciation is not available from CMUDict are matched to the closest available word where possible.
+If no similar word can be found, the pronunciation of the closest available word is unsuitable, or a specific pronunciation
+is required for a word, a pronunciation can be provided in the text file containing the poem by following (without spaces)
+the relevant word with a pair of curly brackets containing the desired pronunciation, in ARPABET, with stress markers, and with syllables
+delimited by dashes. For an example from Keats:
+```
+And wear'st thou the shield of the fam'd Britomartis{B R IH1 T - OW0 - M AA0 R T - IH0 S}?
+```
 ### Poem methods  
 #### get_rhymes()  
 ```python
