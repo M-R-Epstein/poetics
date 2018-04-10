@@ -68,7 +68,6 @@ class Poem:
         dict_tokens = [token for token in set(tokenize(''.join(text)))]
         # Creates a dictionary of words for which the value corresponding to each word string (key) is the object
         # representing that word with the poem as parent. Assigns pronunciation if one was provided in the text.
-        print(self.provided_pronunciations)
         for word in dict_tokens:
             if word in self.provided_pronunciations:
                 self.words[word] = Word(word, self.provided_pronunciations[word], self)
