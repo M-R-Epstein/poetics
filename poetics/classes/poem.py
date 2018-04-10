@@ -56,7 +56,7 @@ class Poem:
             for pronunciation in found_pronunciations:
                 split = pronunciation.split('{')
                 pronunciation = split[1].replace('}', '')
-                self.provided_pronunciations[split[0]] = pronunciation
+                self.provided_pronunciations[split[0].lower()] = pronunciation
             if found_pronunciations:
                 text[index] = re.sub("{[A-Z0-9\s-]+}", "", text[index])
 
@@ -68,6 +68,7 @@ class Poem:
         dict_tokens = [token for token in set(tokenize(''.join(text)))]
         # Creates a dictionary of words for which the value corresponding to each word string (key) is the object
         # representing that word with the poem as parent. Assigns pronunciation if one was provided in the text.
+        print(self.provided_pronunciations)
         for word in dict_tokens:
             if word in self.provided_pronunciations:
                 self.words[word] = Word(word, self.provided_pronunciations[word], self)
@@ -457,7 +458,7 @@ class Poem:
         logging.info("Stanzaic Form%s: %s", stanza_plural, '; '.join(stanza_out))
 
     # Records poem attributes to csv.
-    # Future: should record the rest of the poem's attributes.
+    # TODO: should record the rest of the poem's attributes.
     def record(self, outputfile=config.output_file):
         if not self.got_rhyme:
             logging.warning("Rhyme required for recording. Generating rhyme...")
