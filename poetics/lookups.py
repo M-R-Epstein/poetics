@@ -188,6 +188,9 @@ def name_meter(pattern):
     # Don't bother for blank patterns
     if len(pattern) == 0:
         return None, None
+    # If we get a meter that is missing data for a syllable then return unrecognized
+    if 'X' in pattern:
+        return 'unrecognized', 'meter'
     if pattern in config.classic_meters:
         classical_name = config.classic_meters[pattern]
     # Try to match a 2 syllable foot
