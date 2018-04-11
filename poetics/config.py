@@ -12,7 +12,7 @@ directory = os.path.dirname(__file__)
 # Poem directory.
 poem_directory = os.path.split(directory)[0] + '/poems'
 # Default output file.
-output_file = os.path.split(directory)[0] + 'output.csv'
+output_file = os.path.split(directory)[0] + '/output.csv'
 
 # Path of the spacy model to use.
 spacy_model_dir = os.path.join(directory, 'data/spacy/en_core_web_sm')
