@@ -43,6 +43,8 @@ class Token:
         # Get pronunciations from the matching word dict entry.
         if not self.is_punct and not self.is_wspace:
             self.pronunciations = list(parent.words[self.token.lower()].pronunciations[:])
+            if not self.pronunciations:
+                self.is_wspace = True
             self.stem = parent.words[self.token.lower()].stem
             if len(self.pronunciations) == 1:
                 self.s_stress = self.s_syllables = self.s_str_vowel = self.s_str_ini_con = self.s_str_fin_con = \
