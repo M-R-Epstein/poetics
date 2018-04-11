@@ -224,7 +224,8 @@ def maximize_token_matches(tokens, feature):
         return
 
     # Counter for occurances of the feature for tokens that have the feature resolved.
-    count = Counter([getattr(token.pronunciations[0], feature) for token in tokens if getattr(token, 's_' + feature)])
+    count = Counter([getattr(token.pronunciations[0], feature) for token in tokens
+                     if getattr(token, 's_' + feature) and token.pronunciations])
     # Counter for occurances of the feature for tokens that don't have the feature resolved.
     multi_count = Counter([getattr(pronunciation, feature) for token in unresolved_tokens
                            for pronunciation in token.pronunciations])
