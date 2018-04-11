@@ -144,10 +144,14 @@ class Poem:
 
         # Generate schemes for each feature.
         for feature in features:
-            f_scheme = feats_to_scheme([' ' if line.is_blank else getattr(line.final_word.pronunciations[0], feature)
-                                        for line in self.lines], False, False, threshold)
-            i_scheme = feats_to_scheme([' ' if line.is_blank else getattr(line.initial_word.pronunciations[0], feature)
-                                        for line in self.lines], False, False, threshold)
+            f_scheme = feats_to_scheme([' ' if line.is_blank or not line.final_word.pronunciations
+                                        else getattr(line.final_word.pronunciations[0], feature)
+                                        for line in self.lines],
+                                       False, False, threshold)
+            i_scheme = feats_to_scheme([' ' if line.is_blank or not line.initial_word.pronunciations
+                                        else getattr(line.initial_word.pronunciations[0], feature)
+                                        for line in self.lines],
+                                       False, False, threshold)
             # If a scheme was returned (feats_to_scheme will return None if the number of unique entries exceeded
             # threshold), then add it to the poem's list of line-final (f_) or line-initial (i_) schemes.
             if f_scheme:
