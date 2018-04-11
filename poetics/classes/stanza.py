@@ -39,9 +39,11 @@ class Stanza:
         # Get line initial and line final schemes for each feature.
         for feature in features:
             self.f_rhyme_schemes[feature] = feats_to_scheme([getattr(line.final_word.pronunciations[0], feature)
-                                                             for line in self.lines], True, True)
+                                                             for line in self.lines if line.final_word.pronunciations],
+                                                            True, True)
             self.i_rhyme_schemes[feature] = feats_to_scheme([getattr(line.initial_word.pronunciations[0], feature)
-                                                             for line in self.lines], True, True)
+                                                             for line in self.lines if line.initial_word.pronunciations],
+                                                            True, True)
 
     def get_form(self):
         # Create a list of syllables per line.
