@@ -54,8 +54,9 @@ class Word:
         else:
             f_pronunciations = []
             pronunciations = get_pronunciations(word)
-            for pronunciation in pronunciations:
-                f_pronunciations.append(Pronunciation(pronunciation, self))
+            if pronunciations:
+                for pronunciation in pronunciations:
+                    f_pronunciations.append(Pronunciation(pronunciation, self))
             self.pronunciations = tuple(f_pronunciations)
 
     def __str__(self) -> str:
