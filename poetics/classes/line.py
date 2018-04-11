@@ -39,7 +39,8 @@ class Line:
         multi_length = False
         for token in self.word_tokens:
             if token.s_syllables:
-                syllables += len(token.pronunciations[0].syllables)
+                if token.pronunciations:
+                    syllables += len(token.pronunciations[0].syllables)
             else:
                 multi_length = True
         # If the line isn't marked as variable length, then its final syllable count is what we counted.
