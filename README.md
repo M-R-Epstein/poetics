@@ -132,8 +132,3 @@ process_poems(directory=config.poem_directory, outputfile='output.csv')
 ```
 Runs the above mentioned methods on all poems in a directory (including its sub-directories), including `record`. 
 `directory` defaults to `poem_directory` set in [config.py](/poetics/config.py). Output is written to `output_file` by default, also set in [config.py](/poetics/config.py). 
-
-
----
-# License
-Some kind of license.
