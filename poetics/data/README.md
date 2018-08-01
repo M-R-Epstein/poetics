@@ -17,7 +17,7 @@ A dictionary of alternate spellings for words. Used to map spellings that aren't
 "accessorise":"accessorize",
 "accessorised":"accessorized"
 ```
-Each `key: value` pair has a `key` which is _not_ in CMUDict and a `value` that _is_ in CMUDict. Based on data from 
+Each `key: value` pair has a `key` that is _not_ in CMUDict and a `value` that _is_ in CMUDict. Based on data from 
 [Varcon](http://wordlist.aspell.net/varcon/).
 
 
@@ -107,11 +107,11 @@ The key for each entry is the name of the stanzaic form.
 
 #### Single stanza poetic form (`str`)  
 Indicates the name that should be assigned to a poem's form if it is entire made up of a single instance
-of a kind of stanza. Can be empty (`""`), in which case the name of the stanza form will be used.
+of a kind of stanza. Can be empty (`""`), in which case the name of the stanzaic form will be used.
 
-#### Multiple stanza poetic form (`str`)**   
+#### Multiple stanza poetic form (`str`)   
 Indicates the name that should be assigned to a poem's form if it is exclusively composed of multiple stanazas 
-of the given type. Can be empty (`""`), in which case the name of the stanza form will be used.
+of the given type. Can be empty (`""`), in which case the name of the stanzaic form will be used.
 
 ---
 
